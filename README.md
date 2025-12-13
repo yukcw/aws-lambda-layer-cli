@@ -1,6 +1,17 @@
 # AWS Lambda Layer CLI Tool
 
-A command-line tool for creating AWS Lambda layers for Node.js and Python.
+A powerful command-line tool for creating and publishing AWS Lambda layers for Node.js and Python.
+
+## Features
+
+- **Create Layers**: Generate Lambda layer zip files for Node.js and Python
+- **Publish to AWS**: Directly publish layers to AWS Lambda with IAM credentials
+- **Version Management**: Support for package version specification
+- **Security**: Input validation and sanitization
+- **Smart Naming**: Automatic layer naming with package versions
+- **Multiple Packages**: Support for multiple packages in a single layer
+- **Runtime Versioning**: Specify Node.js or Python versions
+- **Package Managers**: Support for npm (Node.js) and uv/pip (Python)
 
 ## Installation
 
@@ -11,46 +22,3 @@ cd aws-lambda-layer-cli
 
 # Run installation script (requires sudo)
 sudo ./install.sh
-```
-
-## Usage
-### Basic Syntax
-```bash
-aws-lambda-layer publish --nodejs [options]
-aws-lambda-layer publish --python [options]
-```
-
-### Examples
-Node.js:
-
-```bash
-# Create a Node.js layer with Express
-aws-lambda-layer publish --nodejs -i express
-
-# Create with multiple packages and custom name
-aws-lambda-layer publish --nodejs -i axios,lodash,moment -n utilities.zip
-
-# Specify Node.js version
-aws-lambda-layer publish --nodejs -i @aws-sdk/client-lambda --node-version=18
-```
-
-Python:
-
-```bash
-# Create a Python layer with numpy
-aws-lambda-layer publish --python -i numpy
-
-# Multiple packages with specific Python version
-aws-lambda-layer publish --python -i requests,boto3,pandas --python-version=3.11
-
-# Without UV (use pip/venv)
-aws-lambda-layer publish --python -i flask --no-uv
-```
-
-Short forms:
-
-```bash
-# Short flags
-aws-lambda-layer publish -n express,axios    # Node.js
-aws-lambda-layer publish -p numpy,pandas     # Python
-```

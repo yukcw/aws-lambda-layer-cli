@@ -2,7 +2,7 @@
 
 # AWS Lambda Layer CLI Tool
 # Install: sudo ./install.sh
-# Usage: aws-lambda-layer publish --nodejs -i express,axios -n my-layer
+# Usage: aws-lambda-layer zip --nodejs -i express,axios -n my-layer
 
 set -e
 set -u
@@ -12,6 +12,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Paths
@@ -24,51 +25,147 @@ COMPLETION_DIR="/etc/bash_completion.d"
 
 # Show help
 show_help() {
-    cat << EOF
-${GREEN}AWS Lambda Layer Creator${NC}
-
-${BLUE}Usage:${NC}
-  aws-lambda-layer publish --nodejs [options]
-  aws-lambda-layer publish --python [options]
-  aws-lambda-layer --help
-
-${BLUE}Commands:${NC}
-  publish        Create and package a Lambda layer
-
-${BLUE}Runtime Options:${NC}
-  --nodejs, --node, -n    Create a Node.js Lambda layer
-  --python, --py, -p      Create a Python Lambda layer
-
-${BLUE}Common Options:${NC}
-  -i, --packages          Comma-separated list of packages (required)
-  --name                  Name of the output zip file
-  -h, --help              Show this help message
-
-${BLUE}Node.js Specific Options:${NC}
-  --node-version          Node.js version (e.g., 18, 20)
-
-${BLUE}Python Specific Options:${NC}
-  --python-version        Python version (e.g., 3.9, 3.11)
-  --no-uv                 Use pip/venv instead of uv
-
-${BLUE}Examples:${NC}
-  aws-lambda-layer publish --nodejs -i express,axios
-  aws-lambda-layer publish --python -i numpy,pandas --python-version=3.11
-  aws-lambda-layer publish -n express,lodash --node-version=20 --name=express-layer.zip
-  aws-lambda-layer publish -p requests,boto3 --no-uv
-
-${YELLOW}Note:${NC} Use tab completion for command hints!
-EOF
+    printf "${GREEN}AWS Lambda Layer CLI Tool${NC}\n\n"
+    
+    printf "${BLUE}Usage:${NC}\n"
+    printf "  aws-lambda-layer zip --nodejs [options]\n"
+    printf "  aws-lambda-layer zip --python [options]\n"
+    printf "  aws-lambda-layer publish --nodejs [options]\n"
+    printf "  aws-lambda-layer publish --python [options]\n"
+    printf "  aws-lambda-layer --help\n\n"
+    
+    printf "${BLUE}Commands:${NC}\n"
+    printf "  zip            Create and package a Lambda layer as zip file\n"
+    printf "  publish        Create and publish a Lambda layer to AWS (uses IAM credentials)\n"
+    printf "  help           Show this help message\n\n"
+    
+    printf "${BLUE}Runtime Options:${NC}\n"
+    printf "  --nodejs, --node, -n    Create a Node.js Lambda layer\n"
+    printf "  --python, --py, -p      Create a Python Lambda layer\n"
+    printf "  --runtime=RUNTIME       Specify runtime (nodejs or python)\n\n"
+    
+    printf "${BLUE}Common Options:${NC}\n"
+    printf "  -i, --packages          Comma-separated list of packages with optional versions (required)\n"
+    printf "  --name                  Name for the output zip file / layer name\n"
+    printf "  --description           Description for the layer (publish command only)\n"
+    printf "  -h, --help              Show this help message\n\n"
+    
+    printf "${BLUE}Node.js Specific Options:${NC}\n"
+    printf "  --node-version          Node.js version (default: 24)\n\n"
+    
+    printf "${BLUE}Python Specific Options:${NC}\n"
+    printf "  --python-version        Python version (default: 3.14)\n"
+    printf "  --no-uv                 Use pip/venv instead of uv\n\n"
+    
+    printf "${BLUE}Package Version Examples:${NC}\n"
+    printf "  Node.js:    -i express@4.18.2,date-fns@3.0.0,@aws-sdk/client-lambda@3.515.0\n"
+    printf "  Python:     -i numpy==1.26.0,pandas==2.1.3,requests>=2.31.0\n\n"
+    
+    printf "${BLUE}Examples:${NC}\n"
+    printf "  aws-lambda-layer zip --nodejs -i express@4.18.2\n"
+    printf "  aws-lambda-layer zip --python -i numpy==1.26.0,pandas==2.1.3\n"
+    printf "  aws-lambda-layer publish --nodejs -i express@4.18.2 --description \"Express layer\"\n"
+    printf "  aws-lambda-layer publish --python -i numpy==1.26.0 --description \"NumPy layer\"\n"
+    printf "  aws-lambda-layer publish --nodejs -i axios,lodash --name utility-layer --description \"Utility packages\"\n\n"
+    
+    printf "${YELLOW}Requirements for publish command:${NC}\n"
+    printf "  - AWS CLI installed and configured\n"
+    printf "  - IAM credentials with lambda:PublishLayerVersion permission\n"
+    printf "  - Proper AWS region configuration\n"
 }
 
 # Show version
 show_version() {
-    echo "aws-lambda-layer v1.0.0"
-    echo "AWS Lambda Layer Creator CLI Tool"
+    echo "aws-lambda-layer v1.2.0"
+    echo "AWS Lambda Layer Creator and Publisher CLI Tool"
 }
 
-# Publish command handler
-handle_publish() {
+# Check if AWS CLI is installed and configured
+check_aws_cli() {
+    if ! command -v aws &> /dev/null; then
+        printf "${RED}Error: AWS CLI is not installed${NC}\n"
+        printf "Please install AWS CLI first:\n"
+        printf "  https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html\n"
+        return 1
+    fi
+    
+    # Check if AWS credentials are configured
+    if ! aws sts get-caller-identity &> /dev/null; then
+        printf "${RED}Error: AWS credentials not configured or invalid${NC}\n"
+        printf "Please configure AWS credentials:\n"
+        printf "  aws configure\n"
+        printf "  or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION environment variables\n"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Get AWS account info
+get_aws_account_info() {
+    printf "${CYAN}Checking AWS account...${NC}\n"
+    
+    # Get account ID
+    local account_id
+    account_id=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        printf "  Account ID: ${GREEN}$account_id${NC}\n"
+    else
+        printf "  ${YELLOW}Could not retrieve account ID${NC}\n"
+        account_id="UNKNOWN"
+    fi
+    
+    # Get account aliases
+    local aliases
+    aliases=$(aws iam list-account-aliases --query 'AccountAliases' --output text 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$aliases" ]; then
+        printf "  Account Aliases: ${GREEN}$aliases${NC}\n"
+    else
+        printf "  ${YELLOW}No account aliases found${NC}\n"
+    fi
+    
+    # Get region
+    local region
+    region=$(aws configure get region 2>/dev/null || echo "$AWS_DEFAULT_REGION")
+    if [ -n "$region" ]; then
+        printf "  Region: ${GREEN}$region${NC}\n"
+    else
+        printf "  ${YELLOW}Region not configured${NC}\n"
+    fi
+    
+    printf "\n"
+    printf "${YELLOW}⚠️  This layer will be published to the AWS account above.${NC}\n"
+    printf "Press Ctrl+C to cancel within 5 seconds...\n"
+    
+    # Give user time to cancel
+    for i in {5..1}; do
+        printf "\rContinuing in $i seconds... "
+        sleep 1
+    done
+    printf "\r${GREEN}Proceeding with layer publication...${NC}\n\n"
+}
+
+# Determine compatible runtimes for AWS
+get_compatible_runtimes() {
+    local runtime="$1"
+    local version="$2"
+    
+    case "$runtime" in
+        nodejs)
+            echo "nodejs${version}.x"
+            ;;
+        python)
+            # AWS Lambda uses format like python3.14, not python3.14.x
+            echo "python${version}"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# Zip command handler - creates local zip files
+handle_zip() {
     local runtime=""
     local args=()
     
@@ -82,9 +179,45 @@ handle_publish() {
             runtime="python"
             shift
             ;;
+        --runtime=*)
+            runtime="${1#*=}"
+            case "$runtime" in
+                nodejs)
+                    shift
+                    ;;
+                python)
+                    shift
+                    ;;
+                *)
+                    printf "${RED}Error: Invalid runtime specified: $runtime${NC}\n"
+                    printf "Valid runtimes: nodejs, python\n"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        --runtime)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                runtime="$2"
+                shift 2
+                case "$runtime" in
+                    nodejs|python)
+                        ;;
+                    *)
+                        printf "${RED}Error: Invalid runtime specified: $runtime${NC}\n"
+                        printf "Valid runtimes: nodejs, python\n"
+                        exit 1
+                        ;;
+                esac
+            else
+                printf "${RED}Error: --runtime requires an argument${NC}\n"
+                printf "Example: --runtime=nodejs or --runtime python\n"
+                exit 1
+            fi
+            ;;
         *)
-            echo -e "${RED}Error: Missing or invalid runtime specification${NC}"
-            echo "Use --nodejs, --node, -n for Node.js or --python, --py, -p for Python"
+            printf "${RED}Error: Missing or invalid runtime specification${NC}\n"
+            printf "Use --nodejs, --node, -n for Node.js or --python, --py, -p for Python\n"
+            printf "Or use --runtime=nodejs or --runtime=python\n"
             exit 1
             ;;
     esac
@@ -92,19 +225,290 @@ handle_publish() {
     # Pass remaining arguments to the appropriate script
     if [ "$runtime" = "nodejs" ]; then
         if [ ! -f "$NODE_SCRIPT" ]; then
-            echo -e "${RED}Error: Node.js script not found at $NODE_SCRIPT${NC}"
-            echo "Please run install.sh first"
+            printf "${RED}Error: Node.js script not found at $NODE_SCRIPT${NC}\n"
+            printf "Please run install.sh first\n"
             exit 1
         fi
+        printf "${BLUE}Creating Node.js Lambda layer (local zip)...${NC}\n"
         "$NODE_SCRIPT" "$@"
     elif [ "$runtime" = "python" ]; then
         if [ ! -f "$PYTHON_SCRIPT" ]; then
-            echo -e "${RED}Error: Python script not found at $PYTHON_SCRIPT${NC}"
-            echo "Please run install.sh first"
+            printf "${RED}Error: Python script not found at $PYTHON_SCRIPT${NC}\n"
+            printf "Please run install.sh first\n"
             exit 1
         fi
+        printf "${BLUE}Creating Python Lambda layer (local zip)...${NC}\n"
         "$PYTHON_SCRIPT" "$@"
     fi
+}
+
+# Publish command handler - publishes layer directly to AWS
+handle_publish() {
+    local runtime=""
+    local description=""
+    local layer_name=""
+    local args=()
+    
+    # Parse publish-specific arguments first
+    local new_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --description)
+                if [[ -n "$2" && "$2" != -* ]]; then
+                    description="$2"
+                    shift 2
+                else
+                    printf "${RED}Error: --description requires an argument${NC}\n"
+                    exit 1
+                fi
+                ;;
+            --description=*)
+                description="${1#*=}"
+                shift
+                ;;
+            --name)
+                if [[ -n "$2" && "$2" != -* ]]; then
+                    layer_name="$2"
+                    shift 2
+                else
+                    printf "${RED}Error: --name requires an argument${NC}\n"
+                    exit 1
+                fi
+                ;;
+            --name=*)
+                layer_name="${1#*=}"
+                shift
+                ;;
+            *)
+                new_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+    
+    # Parse runtime flag from remaining arguments
+    set -- "${new_args[@]}"
+    case "$1" in
+        --nodejs|--node|-n)
+            runtime="nodejs"
+            shift
+            ;;
+        --python|--py|-p)
+            runtime="python"
+            shift
+            ;;
+        --runtime=*)
+            runtime="${1#*=}"
+            case "$runtime" in
+                nodejs)
+                    shift
+                    ;;
+                python)
+                    shift
+                    ;;
+                *)
+                    printf "${RED}Error: Invalid runtime specified: $runtime${NC}\n"
+                    printf "Valid runtimes: nodejs, python\n"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        --runtime)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                runtime="$2"
+                shift 2
+                case "$runtime" in
+                    nodejs|python)
+                        ;;
+                    *)
+                        printf "${RED}Error: Invalid runtime specified: $runtime${NC}\n"
+                        printf "Valid runtimes: nodejs, python\n"
+                        exit 1
+                        ;;
+                esac
+            else
+                printf "${RED}Error: --runtime requires an argument${NC}\n"
+                printf "Example: --runtime=nodejs or --runtime python\n"
+                exit 1
+            fi
+            ;;
+        *)
+            printf "${RED}Error: Missing or invalid runtime specification${NC}\n"
+            printf "Use --nodejs, --node, -n for Node.js or --python, --py, -p for Python\n"
+            printf "Or use --runtime=nodejs or --runtime=python\n"
+            exit 1
+            ;;
+    esac
+    
+    # Check AWS CLI and credentials
+    if ! check_aws_cli; then
+        exit 1
+    fi
+    
+    # Show AWS account info and wait for confirmation
+    get_aws_account_info
+    
+    # Create temporary directory for building the layer
+    local temp_dir
+    temp_dir=$(mktemp -d -t lambda-layer-XXXXXX)
+    
+    # Create a temporary output directory
+    local output_dir="$temp_dir/output"
+    mkdir -p "$output_dir"
+    
+    # Change to temp directory to build the layer
+    pushd "$temp_dir" > /dev/null
+    
+    printf "${BLUE}Building Lambda layer in temporary directory...${NC}\n"
+    
+    # Build the layer using the appropriate script
+    local build_args=()
+    if [ -n "$layer_name" ]; then
+        build_args+=("--name" "${layer_name}.zip")
+    fi
+    
+    # Add remaining arguments
+    for arg in "$@"; do
+        build_args+=("$arg")
+    done
+    
+    local zip_file=""
+    if [ "$runtime" = "nodejs" ]; then
+        if [ ! -f "$NODE_SCRIPT" ]; then
+            printf "${RED}Error: Node.js script not found${NC}\n"
+            popd > /dev/null
+            rm -rf "$temp_dir"
+            exit 1
+        fi
+        "$NODE_SCRIPT" "${build_args[@]}" 2>&1 | tee "$temp_dir/build.log"
+        
+        # Extract zip file name from build output
+        zip_file=$(grep -o "File: .*\.zip" "$temp_dir/build.log" | cut -d' ' -f2 | tail -1)
+        if [ -z "$zip_file" ]; then
+            # Try to find zip file in current directory
+            zip_file=$(find . -name "*.zip" -type f | head -1)
+        fi
+        
+        # Extract Node.js version for compatible runtimes
+        local node_version=$(grep -o "Node.js version: [0-9.]*" "$temp_dir/build.log" | cut -d' ' -f3 | tail -1)
+        if [ -z "$node_version" ]; then
+            node_version="24"
+        fi
+        local compatible_runtimes="nodejs${node_version}.x"
+        
+    elif [ "$runtime" = "python" ]; then
+        if [ ! -f "$PYTHON_SCRIPT" ]; then
+            printf "${RED}Error: Python script not found${NC}\n"
+            popd > /dev/null
+            rm -rf "$temp_dir"
+            exit 1
+        fi
+        "$PYTHON_SCRIPT" "${build_args[@]}" 2>&1 | tee "$temp_dir/build.log"
+        
+        # Extract zip file name from build output
+        zip_file=$(grep -o "File: .*\.zip" "$temp_dir/build.log" | cut -d' ' -f2 | tail -1)
+        if [ -z "$zip_file" ]; then
+            # Try to find zip file in current directory
+            zip_file=$(find . -name "*.zip" -type f | head -1)
+        fi
+        
+        # Extract Python version for compatible runtimes
+        local python_version=$(grep -o "Python: [0-9.]*" "$temp_dir/build.log" | cut -d' ' -f2 | tail -1)
+        if [ -z "$python_version" ]; then
+            python_version="3.14"
+        fi
+        local compatible_runtimes="python${python_version}"
+    fi
+    
+    popd > /dev/null
+    
+    # Check if zip file was created
+    if [ -z "$zip_file" ] || [ ! -f "$temp_dir/$zip_file" ]; then
+        printf "${RED}Error: Failed to create layer zip file${NC}\n"
+        printf "Check build log: $temp_dir/build.log\n"
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+    
+    # Determine layer name (remove .zip extension)
+    if [ -z "$layer_name" ]; then
+        layer_name=$(basename "$zip_file" .zip)
+    fi
+    
+    # Determine description
+    local packages_info=""
+    if [ "$runtime" = "nodejs" ]; then
+        packages_info=$(grep -o "Packages: .*" "$temp_dir/build.log" | cut -d' ' -f2- | tail -1)
+    elif [ "$runtime" = "python" ]; then
+        packages_info=$(grep -o "Packages: .*" "$temp_dir/build.log" | cut -d' ' -f2- | tail -1)
+    fi
+    
+    local final_description=""
+    if [ -n "$description" ]; then
+        final_description="$description - $packages_info"
+    else
+        final_description="$packages_info"
+    fi
+    
+    # Limit description length (AWS limit is 256 characters)
+    if [ ${#final_description} -gt 256 ]; then
+        final_description="${final_description:0:253}..."
+    fi
+    
+    printf "\n${CYAN}Publishing Lambda layer to AWS...${NC}\n"
+    printf "  Layer name: ${GREEN}$layer_name${NC}\n"
+    printf "  Description: ${GREEN}$final_description${NC}\n"
+    printf "  Compatible runtimes: ${GREEN}$compatible_runtimes${NC}\n"
+    printf "  Zip file: ${GREEN}$zip_file${NC}\n\n"
+    
+    # Publish the layer
+    printf "${YELLOW}Executing: aws lambda publish-layer-version${NC}\n"
+    printf "  --layer-name \"$layer_name\"\n"
+    printf "  --description \"$final_description\"\n"
+    printf "  --zip-file \"fileb://$temp_dir/$zip_file\"\n"
+    printf "  --compatible-runtimes \"$compatible_runtimes\"\n\n"
+    
+    if aws lambda publish-layer-version \
+        --layer-name "$layer_name" \
+        --description "$final_description" \
+        --zip-file "fileb://$temp_dir/$zip_file" \
+        --compatible-runtimes "$compatible_runtimes" \
+        --query '[LayerVersionArn, Version, Description]' \
+        --output table 2>&1 | tee "$temp_dir/publish.log"; then
+        
+        printf "\n${GREEN}✅ Lambda layer published successfully!${NC}\n"
+        
+        # Extract layer ARN from log
+        local layer_arn=$(grep -o "arn:aws:lambda:[^:]*:[0-9]*:layer:$layer_name:[0-9]*" "$temp_dir/publish.log" | tail -1)
+        if [ -n "$layer_arn" ]; then
+            printf "  Layer ARN: ${CYAN}$layer_arn${NC}\n"
+            
+            # Show usage example
+            printf "\n${YELLOW}Usage example in Lambda function:${NC}\n"
+            printf "  layers:\n"
+            printf "    - $layer_arn\n"
+            printf "\n${YELLOW}To attach to existing Lambda function:${NC}\n"
+            printf "  aws lambda update-function-configuration \\\\\n"
+            printf "    --function-name YOUR_FUNCTION_NAME \\\\\n"
+            printf "    --layers $layer_arn\n"
+        fi
+    else
+        printf "\n${RED}❌ Failed to publish Lambda layer${NC}\n"
+        printf "Check publish log: $temp_dir/publish.log\n"
+        printf "\n${YELLOW}Common issues:${NC}\n"
+        printf "1. IAM permissions missing (lambda:PublishLayerVersion)\n"
+        printf "2. Layer name already exists (try different --name)\n"
+        printf "3. Zip file too large (max 50MB for direct upload)\n"
+        printf "4. Network connectivity issues\n"
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+    
+    # Cleanup
+    printf "\n${BLUE}Cleaning up temporary files...${NC}\n"
+    rm -rf "$temp_dir"
+    
+    printf "\n${GREEN}✅ All done! Layer is now available in your AWS account.${NC}\n"
 }
 
 # Main command parsing
@@ -115,20 +519,24 @@ main() {
     fi
     
     case "$1" in
+        zip)
+            shift
+            handle_zip "$@"
+            ;;
         publish)
             shift
             handle_publish "$@"
             ;;
-        --help|-h)
+        help|--help|-h)
             show_help
             ;;
         --version|-v)
             show_version
             ;;
         *)
-            echo -e "${RED}Error: Unknown command '$1'${NC}"
-            echo "Available commands: publish"
-            echo "Use --help for more information"
+            printf "${RED}Error: Unknown command '$1'${NC}\n"
+            printf "Available commands: zip, publish\n"
+            printf "Use --help for more information\n"
             exit 1
             ;;
     esac

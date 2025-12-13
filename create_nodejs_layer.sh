@@ -9,7 +9,7 @@
 set -e  # Exit on error
 set -u  # Treat unset variables as errors
 
-# Generate unique temporary directory
+# Generate unique temporary directory (removed -XXXXXX)
 TEMP_DIR=$(mktemp -d -t nodejs-layer)
 WORK_DIR="$TEMP_DIR/layer-build"
 NODE_DIR="$WORK_DIR/nodejs"
@@ -19,6 +19,13 @@ PACKAGES=""
 LAYER_NAME=""
 NODE_VERSION="24"  # Default to Node.js 24
 ORIGINAL_DIR=$(pwd)
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
 # Security functions
 sanitize_filename() {
@@ -35,17 +42,17 @@ validate_version() {
     local version="$1"
     # Allow only numbers and dots
     if [[ ! "$version" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
-        echo "Error: Invalid version format: $version"
-        echo "Version must contain only numbers and dots (e.g., 24, 20.0.0)"
+        printf "${RED}Error: Invalid version format: $version${NC}\n"
+        printf "Version must contain only numbers and dots (e.g., 24, 20.0.0)\n"
         exit 1
     fi
 }
 
 escape_package_name() {
     local pkg="$1"
-    # Whitelist for Node.js: A-Za-z0-9._-@/
-    # Keep only allowed characters
-    echo "$pkg" | sed 's/[^A-Za-z0-9._\-@\/]//g'
+    # Whitelist for Node.js: A-Za-z0-9._-@/ (with version operators: ^~<>)
+    # FIXED: Place hyphen at the end of character class to avoid regex range interpretation
+    echo "$pkg" | sed 's/[^A-Za-z0-9._@\/~^><=+-]//g'
 }
 
 # Extract base package name from version specification
@@ -102,8 +109,8 @@ while [[ $# -gt 0 ]]; do
                 PACKAGES="$2"
                 shift 2
             else
-                echo "Error: $1 requires an argument"
-                echo "Example: $1 express@4.18.2,axios"
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 express@4.18.2,axios\n"
                 exit 1
             fi
             ;;
@@ -116,8 +123,8 @@ while [[ $# -gt 0 ]]; do
                 LAYER_NAME="$2"
                 shift 2
             else
-                echo "Error: $1 requires an argument"
-                echo "Example: $1 my-layer.zip"
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 my-layer.zip\n"
                 exit 1
             fi
             ;;
@@ -131,8 +138,8 @@ while [[ $# -gt 0 ]]; do
                 validate_version "$NODE_VERSION"
                 shift 2
             else
-                echo "Error: $1 requires an argument"
-                echo "Example: $1 24"
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 24\n"
                 exit 1
             fi
             ;;
@@ -171,8 +178,8 @@ EOF
             exit 0
             ;;
         *)
-            echo "Unknown option: $1"
-            echo "Use -h or --help for usage information"
+            printf "${RED}Unknown option: $1${NC}\n"
+            printf "Use -h or --help for usage information\n"
             exit 1
             ;;
     esac
@@ -180,9 +187,9 @@ done
 
 # Check if packages are provided
 if [ -z "$PACKAGES" ]; then
-    echo "Error: Packages argument is required"
-    echo "Use -i or --packages to specify packages (comma-separated)"
-    echo "Example: ./create_nodejs_layer.sh -i express@4.18.2,axios"
+    printf "${RED}Error: Packages argument is required${NC}\n"
+    printf "Use -i or --packages to specify packages (comma-separated)\n"
+    printf "Example: ./create_nodejs_layer.sh -i express@4.18.2,axios\n"
     exit 1
 fi
 
@@ -217,67 +224,67 @@ for pkg in "${PACKAGE_ARRAY[@]}"; do
     if [ -n "$escaped_pkg" ]; then
         SANITIZED_PACKAGES="${SANITIZED_PACKAGES}${SANITIZED_PACKAGES:+,}$escaped_pkg"
     else
-        echo "Warning: Package name '$pkg' contains no valid characters after sanitization"
+        printf "${YELLOW}Warning: Package name '$pkg' contains no valid characters after sanitization${NC}\n"
     fi
 done
 
 if [ -z "$SANITIZED_PACKAGES" ]; then
-    echo "Error: No valid packages provided after sanitization"
+    printf "${RED}Error: No valid packages provided after sanitization${NC}\n"
     exit 1
 fi
 
 # Check if any package names were changed
 if [ "$PACKAGES" != "$SANITIZED_PACKAGES" ]; then
-    echo "Warning: Some package names were sanitized:"
-    echo "  Original: $PACKAGES"
-    echo "  Sanitized: $SANITIZED_PACKAGES"
+    printf "${YELLOW}Warning: Some package names were sanitized:${NC}\n"
+    printf "  Original: $PACKAGES\n"
+    printf "  Sanitized: $SANITIZED_PACKAGES\n"
     PACKAGES="$SANITIZED_PACKAGES"
 fi
 
 # Set Node.js version if specified (already has default 24)
-echo "Node.js version: $NODE_VERSION"
+printf "Node.js version: $NODE_VERSION\n"
 CURRENT_NODE_VERSION=$(get_node_version || echo "")
 if [[ -n "$NODE_VERSION" ]]; then
-    echo "Using Node.js version: $NODE_VERSION"
+    printf "Using Node.js version: $NODE_VERSION\n"
     
     # Check if nvm is available
     if [[ -f "$HOME/.nvm/nvm.sh" ]]; then
-        echo "Using nvm to set Node.js version..."
+        printf "Using nvm to set Node.js version...\n"
         # Source nvm securely with fixed path
         if [ -f "$HOME/.nvm/nvm.sh" ]; then
             # shellcheck source=/dev/null
             source "$HOME/.nvm/nvm.sh"
         else
-            echo "Error: nvm not found at expected location"
+            printf "${RED}Error: nvm not found at expected location${NC}\n"
             exit 1
         fi
         
         # Check if requested version is installed using safe method
-        NVM_VERSIONS=$(nvm list --no-colors 2>/dev/null | grep -E "->|v$NODE_VERSION\." | head -1 || true)
+        NVM_VERSIONS=$(nvm list --no-colors 2>/dev/null | grep -e "->|v$NODE_VERSION\." | head -1 || true)
         if [[ -n "$NVM_VERSIONS" ]]; then
             nvm use "$NODE_VERSION" > /dev/null 2>&1 || true
-            echo "Switched to Node.js version: $(node --version 2>/dev/null || echo 'unknown')"
+            printf "Switched to Node.js version: $(node --version 2>/dev/null || echo 'unknown')\n"
         else
-            echo "Warning: Requested Node.js version $NODE_VERSION not found via nvm"
-            echo "Using current Node.js version: $(node --version 2>/dev/null || echo 'unknown')"
+            printf "${YELLOW}Warning: Requested Node.js version $NODE_VERSION not found via nvm${NC}\n"
+            printf "Using current Node.js version: $(node --version 2>/dev/null || echo 'unknown')\n"
         fi
     elif command -v nvm >/dev/null 2>&1; then
-        echo "Using nvm to set Node.js version..."
+        printf "Using nvm to set Node.js version...\n"
         # Check if requested version is installed
         NVM_VERSIONS=$(nvm list --no-colors 2>/dev/null | grep -E "->|v$NODE_VERSION\." | head -1 || true)
         if [[ -n "$NVM_VERSIONS" ]]; then
             nvm use "$NODE_VERSION" > /dev/null 2>&1 || true
-            echo "Switched to Node.js version: $(node --version 2>/dev/null || echo 'unknown')"
+            printf "Switched to Node.js version: $(node --version 2>/dev/null || echo 'unknown')\n"
         else
-            echo "Warning: Requested Node.js version $NODE_VERSION not found via nvm"
-            echo "Using current Node.js version: $(node --version 2>/dev/null || echo 'unknown')"
+            printf "${YELLOW}Warning: Requested Node.js version $NODE_VERSION not found via nvm${NC}\n"
+            printf "Using current Node.js version: $(node --version 2>/dev/null || echo 'unknown')\n"
         fi
     else
-        echo "Warning: nvm not found. Using system Node.js"
+        printf "${YELLOW}Warning: nvm not found. Using system Node.js${NC}\n"
         if [[ -n "$CURRENT_NODE_VERSION" ]]; then
-            echo "Current Node.js version: $CURRENT_NODE_VERSION"
+            printf "Current Node.js version: $CURRENT_NODE_VERSION\n"
         else
-            echo "Warning: Could not determine Node.js version"
+            printf "${YELLOW}Warning: Could not determine Node.js version${NC}\n"
         fi
     fi
 fi
@@ -285,28 +292,28 @@ fi
 # Get current Node.js version for naming
 NODE_VERSION_USED=$(get_node_version || echo "$NODE_VERSION")
 
-echo "========================================="
-echo "Node.js Lambda Layer Creator"
-echo "========================================="
-echo "Packages: $PACKAGES"
-echo "Node.js version: $NODE_VERSION_USED"
+printf "${BLUE}=========================================${NC}\n"
+printf "${GREEN}Node.js Lambda Layer Creator${NC}\n"
+printf "${BLUE}=========================================${NC}\n"
+printf "Packages: $PACKAGES\n"
+printf "Node.js version: $NODE_VERSION_USED\n"
 if [ -n "$LAYER_NAME" ]; then
-    echo "Output name: $LAYER_NAME"
+    printf "Output name: $LAYER_NAME\n"
 fi
-echo ""
+printf "\n"
 
 # Step 1: Create directory structure
-echo "[1/5] Creating directory structure..."
+printf "[1/5] Creating directory structure...\n"
 mkdir -p "$NODE_DIR"
 cd "$WORK_DIR"
 
 # Step 2: Initialize npm project
-echo "[2/5] Initializing npm project..."
+printf "[2/5] Initializing npm project...\n"
 cd "$NODE_DIR"
 npm init -y --silent
 
 # Step 3: Install packages with versions
-echo "[3/5] Installing packages..."
+printf "[3/5] Installing packages...\n"
 # Convert to array for safe expansion
 IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
 npm install --save --silent "${PKG_ARRAY[@]}"
@@ -315,7 +322,7 @@ npm install --save --silent "${PKG_ARRAY[@]}"
 PACKAGE_COUNT=$(echo "$PACKAGES" | tr ',' '\n' | wc -l | tr -d ' ')
 
 # Step 4: Determine layer name
-echo "[4/5] Determining layer name..."
+printf "[4/5] Determining layer name...\n"
 if [ -z "$LAYER_NAME" ]; then
     if [ "$PACKAGE_COUNT" -eq 1 ]; then
         # Single package: get base package name without version
@@ -344,10 +351,10 @@ if [ -z "$LAYER_NAME" ]; then
                 # Extract just the version number from spec (remove operators)
                 SPEC_VERSION=$(echo "$SPECIFIED_VERSION" | sed 's/^[=<>!~^]*//')
                 LAYER_NAME="${PKG_NAME}-${SPEC_VERSION}-nodejs${NODE_VERSION_USED}"
-                echo "  Specified version: $SPEC_VERSION"
+                printf "  Specified version: $SPEC_VERSION\n"
             else
                 LAYER_NAME="${PKG_NAME}-${INSTALLED_VERSION}-nodejs${NODE_VERSION_USED}"
-                echo "  Installed version: $INSTALLED_VERSION"
+                printf "  Installed version: $INSTALLED_VERSION\n"
             fi
         else
             # Use project version as fallback
@@ -358,16 +365,16 @@ if [ -z "$LAYER_NAME" ]; then
             
             if [ -n "$SPECIFIED_VERSION" ]; then
                 LAYER_NAME="${PKG_NAME}-${SPECIFIED_VERSION}-nodejs${NODE_VERSION_USED}"
-                echo "  Specified version: $SPECIFIED_VERSION"
+                printf "  Specified version: $SPECIFIED_VERSION\n"
             else
                 LAYER_NAME="${PKG_NAME}-${PROJECT_VERSION}-nodejs${NODE_VERSION_USED}"
-                echo "  Project version: $PROJECT_VERSION"
+                printf "  Project version: $PROJECT_VERSION\n"
             fi
         fi
     else
         # Multiple packages: use nodejs-[date]-nodejs[version].zip
         LAYER_NAME="nodejs-$(date +%Y%m%d)-nodejs${NODE_VERSION_USED}"
-        echo "  Multiple packages, using date-based name"
+        printf "  Multiple packages, using date-based name\n"
     fi
     
     # Sanitize the layer name
@@ -379,7 +386,7 @@ LAYER_NAME=$(sanitize_filename "$LAYER_NAME")
 
 # Ensure .zip extension and check for path traversal
 if [[ "$LAYER_NAME" =~ \.\. ]] || [[ "$LAYER_NAME" =~ ^/ ]]; then
-    echo "Error: Invalid layer name (path traversal detected)"
+    printf "${RED}Error: Invalid layer name (path traversal detected)${NC}\n"
     exit 1
 fi
 
@@ -388,7 +395,7 @@ if [[ ! "$LAYER_NAME" =~ \.zip$ ]]; then
 fi
 
 # Step 5: Zip the nodejs directory
-echo "[5/5] Creating zip file: $LAYER_NAME"
+printf "[5/5] Creating zip file: $LAYER_NAME\n"
 cd "$WORK_DIR"
 zip -r "$LAYER_NAME" "nodejs" -q
 
@@ -396,14 +403,14 @@ zip -r "$LAYER_NAME" "nodejs" -q
 if [[ -f "$LAYER_NAME" ]]; then
     mv "$LAYER_NAME" "$ORIGINAL_DIR/"
 else
-    echo "Error: Zip file not created"
+    printf "${RED}Error: Zip file not created${NC}\n"
     exit 1
 fi
 
-echo ""
-echo "✅ Node.js Lambda layer created successfully!"
-echo "📁 File: $ORIGINAL_DIR/$LAYER_NAME"
-echo "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)"
-echo "📊 Packages installed: $PACKAGE_COUNT"
-echo "🚀 Node.js version: $NODE_VERSION_USED"
-echo ""
+printf "\n"
+printf "${GREEN}✅ Node.js Lambda layer created successfully!${NC}\n"
+printf "📁 File: $ORIGINAL_DIR/$LAYER_NAME\n"
+printf "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)\n"
+printf "📊 Packages installed: $PACKAGE_COUNT\n"
+printf "🚀 Node.js version: $NODE_VERSION_USED\n"
+printf "\n"

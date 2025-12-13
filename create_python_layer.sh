@@ -9,7 +9,7 @@
 set -e  # Exit on error
 set -u  # Treat unset variables as errors
 
-# Generate unique temporary directory
+# Generate unique temporary directory (removed -XXXXXX)
 TEMP_DIR=$(mktemp -d -t python-layer)
 WORK_DIR="$TEMP_DIR/layer-build"
 
@@ -19,6 +19,13 @@ LAYER_NAME=""
 PYTHON_VERSION="3.14"  # Default to Python 3.14
 USE_UV=true
 ORIGINAL_DIR=$(pwd)
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
 # Security functions
 sanitize_filename() {
@@ -35,17 +42,17 @@ validate_python_version() {
     local version="$1"
     # Allow only numbers and dots in Python version (e.g., 3.9, 3.14.2)
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
-        echo "Error: Invalid Python version format: $version"
-        echo "Python version must be in format X.Y or X.Y.Z (e.g., 3.14, 3.14.2)"
+        printf "${RED}Error: Invalid Python version format: $version${NC}\n"
+        printf "Python version must be in format X.Y or X.Y.Z (e.g., 3.14, 3.14.2)\n"
         exit 1
     fi
 }
 
 escape_package_name() {
     local pkg="$1"
-    # Whitelist for Python: A-Za-z0-9._-=><~
-    # Keep only allowed characters for package specifications
-    echo "$pkg" | sed 's/[^A-Za-z0-9._\-\=><~]//g'
+    # Whitelist for Python: A-Za-z0-9._- (with version operators: = > < ~ !)
+    # FIXED: Place hyphen at the end of character class to avoid regex range interpretation
+    echo "$pkg" | sed 's/[^A-Za-z0-9._=><~!+-]//g'
 }
 
 # Extract base package name from version specification
@@ -87,8 +94,8 @@ while [[ $# -gt 0 ]]; do
                 PACKAGES="$2"
                 shift 2
             else
-                echo "Error: $1 requires an argument"
-                echo "Example: $1 numpy==1.26.0,requests"
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 numpy==1.26.0,requests\n"
                 exit 1
             fi
             ;;
@@ -101,8 +108,8 @@ while [[ $# -gt 0 ]]; do
                 LAYER_NAME="$2"
                 shift 2
             else
-                echo "Error: $1 requires an argument"
-                echo "Example: $1 my-python-layer.zip"
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 my-python-layer.zip\n"
                 exit 1
             fi
             ;;
@@ -116,8 +123,8 @@ while [[ $# -gt 0 ]]; do
                 validate_python_version "$PYTHON_VERSION"
                 shift 2
             else
-                echo "Error: $1 requires an argument"
-                echo "Example: $1 3.14"
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 3.14\n"
                 exit 1
             fi
             ;;
@@ -163,8 +170,8 @@ EOF
             exit 0
             ;;
         *)
-            echo "Unknown option: $1"
-            echo "Use -h or --help for usage information"
+            printf "${RED}Unknown option: $1${NC}\n"
+            printf "Use -h or --help for usage information\n"
             exit 1
             ;;
     esac
@@ -172,16 +179,16 @@ done
 
 # Check if packages are provided
 if [ -z "$PACKAGES" ]; then
-    echo "Error: Packages argument is required"
-    echo "Use -i or --packages to specify packages (comma-separated)"
-    echo "Example: ./create_python_layer.sh -i numpy==1.26.0,requests"
+    printf "${RED}Error: Packages argument is required${NC}\n"
+    printf "Use -i or --packages to specify packages (comma-separated)\n"
+    printf "Example: ./create_python_layer.sh -i numpy==1.26.0,requests\n"
     exit 1
 fi
 
 # Check if uv is available safely
 if [ "$USE_UV" = true ]; then
     if ! command -v uv >/dev/null 2>&1; then
-        echo "Warning: uv not found, falling back to pip/venv"
+        printf "${YELLOW}Warning: uv not found, falling back to pip/venv${NC}\n"
         USE_UV=false
     fi
 fi
@@ -197,65 +204,65 @@ for pkg in "${PACKAGE_ARRAY[@]}"; do
     if [ -n "$escaped_pkg" ]; then
         SANITIZED_PACKAGES="${SANITIZED_PACKAGES}${SANITIZED_PACKAGES:+,}$escaped_pkg"
     else
-        echo "Warning: Package name '$pkg' contains no valid characters after sanitization"
+        printf "${YELLOW}Warning: Package name '$pkg' contains no valid characters after sanitization${NC}\n"
     fi
 done
 
 if [ -z "$SANITIZED_PACKAGES" ]; then
-    echo "Error: No valid packages provided after sanitization"
+    printf "${RED}Error: No valid packages provided after sanitization${NC}\n"
     exit 1
 fi
 
 # Check if any package names were changed
 if [ "$PACKAGES" != "$SANITIZED_PACKAGES" ]; then
-    echo "Warning: Some package names were sanitized:"
-    echo "  Original: $PACKAGES"
-    echo "  Sanitized: $SANITIZED_PACKAGES"
+    printf "${YELLOW}Warning: Some package names were sanitized:${NC}\n"
+    printf "  Original: $PACKAGES\n"
+    printf "  Sanitized: $SANITIZED_PACKAGES\n"
     PACKAGES="$SANITIZED_PACKAGES"
 fi
 
-echo "========================================="
-echo "Python Lambda Layer Creator"
-echo "========================================="
-echo "Packages: $PACKAGES"
-echo "Python version: $PYTHON_VERSION"
-echo "Using UV: $USE_UV"
+printf "${BLUE}=========================================${NC}\n"
+printf "${GREEN}Python Lambda Layer Creator${NC}\n"
+printf "${BLUE}=========================================${NC}\n"
+printf "Packages: $PACKAGES\n"
+printf "Python version: $PYTHON_VERSION\n"
+printf "Using UV: $USE_UV\n"
 if [ -n "$LAYER_NAME" ]; then
-    echo "Output name: $LAYER_NAME"
+    printf "Output name: $LAYER_NAME\n"
 fi
-echo ""
+printf "\n"
 
 # Step 1: Create working directory
-echo "[1/7] Creating directory structure..."
+printf "[1/7] Creating directory structure...\n"
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
 # Step 2: Create virtual environment
-echo "[2/7] Creating virtual environment..."
+printf "[2/7] Creating virtual environment...\n"
 if [ "$USE_UV" = true ]; then
-    echo "  Using UV to create venv..."
+    printf "  Using UV to create venv...\n"
     uv venv --python "python${PYTHON_VERSION}" python
     source python/bin/activate
 else
-    echo "  Using venv module..."
+    printf "  Using venv module...\n"
     if command -v "python${PYTHON_VERSION}" >/dev/null 2>&1; then
         "python${PYTHON_VERSION}" -m venv python
     else
-        echo "Error: python${PYTHON_VERSION} not found"
+        printf "${RED}Error: python${PYTHON_VERSION} not found${NC}\n"
         exit 1
     fi
     source python/bin/activate
 fi
 
 # Step 3: Install packages with versions
-echo "[3/7] Installing packages..."
+printf "[3/7] Installing packages...\n"
 if [ "$USE_UV" = true ]; then
-    echo "  Installing with UV..."
+    printf "  Installing with UV...\n"
     # Convert to array for safe expansion
     IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
     uv pip install "${PKG_ARRAY[@]}"
 else
-    echo "  Installing with pip..."
+    printf "  Installing with pip...\n"
     # Convert to array for safe expansion
     IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
     pip install "${PKG_ARRAY[@]}"
@@ -265,14 +272,14 @@ fi
 PACKAGE_COUNT=$(echo "$PACKAGES" | tr ',' '\n' | wc -l | tr -d ' ')
 
 # Step 4: Determine layer name
-echo "[4/7] Determining layer name..."
+printf "[4/7] Determining layer name...\n"
 if [ -z "$LAYER_NAME" ]; then
     if [ "$PACKAGE_COUNT" -eq 1 ]; then
         PKG_FULL="$PACKAGES"
         PKG_NAME=$(extract_package_name "$PKG_FULL")
         VERSION_SPEC=$(extract_version_spec "$PKG_FULL")
         
-        echo "  Single package: $PKG_NAME"
+        printf "  Single package: $PKG_NAME\n"
         
         # Extract version from installed package
         if [ "$USE_UV" = true ]; then
@@ -295,7 +302,7 @@ if [ -z "$LAYER_NAME" ]; then
             
             if [ -n "$INSTALLED_VERSION" ]; then
                 # Sanitize version string using whitelist
-                INSTALLED_VERSION=$(echo "$INSTALLED_VERSION" | sed 's/[^A-Za-z0-9._\-]//g')
+                INSTALLED_VERSION=$(echo "$INSTALLED_VERSION" | sed 's/[^A-Za-z0-9._=><~!+-]//g')
                 INSTALLED_VERSION=$(echo "$INSTALLED_VERSION" | sed 's/\.post[0-9]*//' | sed 's/\.dev[0-9]*//' | sed 's/\+.*//')
                 
                 # If user specified a version, use it in the name
@@ -303,22 +310,23 @@ if [ -z "$LAYER_NAME" ]; then
                     # Extract just the version number from spec (remove operators)
                     SPEC_VERSION=$(echo "$VERSION_SPEC" | sed 's/^[=<>!~]*//')
                     LAYER_NAME="${PKG_NAME}-${SPEC_VERSION}-python${PYTHON_VERSION}"
-                    echo "  Specified version: $SPEC_VERSION"
+                    printf "  Specified version: $SPEC_VERSION\n"
+                    printf "  Using versioned name\n"
                 else
                     LAYER_NAME="${PKG_NAME}-${INSTALLED_VERSION}-python${PYTHON_VERSION}"
-                    echo "  Installed version: $INSTALLED_VERSION"
+                    printf "  Installed version: $INSTALLED_VERSION\n"
                 fi
             else
                 LAYER_NAME="${PKG_NAME}-$(date +%Y%m%d)-python${PYTHON_VERSION}"
-                echo "  Could not extract version, using date-based name"
+                printf "  Could not extract version, using date-based name\n"
             fi
         else
             LAYER_NAME="${PKG_NAME}-$(date +%Y%m%d)-python${PYTHON_VERSION}"
-            echo "  No package info found, using date-based name"
+            printf "  No package info found, using date-based name\n"
         fi
     else
         LAYER_NAME="python-$(date +%Y%m%d)-python${PYTHON_VERSION}"
-        echo "  Multiple packages, using date-based name"
+        printf "  Multiple packages, using date-based name\n"
     fi
     
     # Sanitize the layer name
@@ -330,7 +338,7 @@ LAYER_NAME=$(sanitize_filename "$LAYER_NAME")
 
 # Check for path traversal in layer name
 if [[ "$LAYER_NAME" =~ \.\. ]] || [[ "$LAYER_NAME" =~ ^/ ]]; then
-    echo "Error: Invalid layer name (path traversal detected)"
+    printf "${RED}Error: Invalid layer name (path traversal detected)${NC}\n"
     exit 1
 fi
 
@@ -340,7 +348,7 @@ if [[ ! "$LAYER_NAME" =~ \.zip$ ]]; then
 fi
 
 # Step 5: Show installed packages
-echo "[5/7] Listing installed packages..."
+printf "[5/7] Listing installed packages...\n"
 if [ "$USE_UV" = true ]; then
     uv pip list --format freeze
 else
@@ -351,28 +359,28 @@ fi
 deactivate
 
 # Step 6: Create zip file
-echo "[6/7] Creating zip file: $LAYER_NAME"
+printf "[6/7] Creating zip file: $LAYER_NAME\n"
 cd "$WORK_DIR"
-echo "  Zipping 'python' directory..."
+printf "  Zipping 'python' directory...\n"
 zip -r "$LAYER_NAME" "python" -q
-echo "  Zip file created successfully"
+printf "  Zip file created successfully\n"
 
 # Step 7: Move to final location
-echo "[7/7] Moving to final location..."
+printf "[7/7] Moving to final location...\n"
 if [[ -f "$LAYER_NAME" ]]; then
     mv "$LAYER_NAME" "$ORIGINAL_DIR/"
 else
-    echo "Error: Zip file not created"
+    printf "${RED}Error: Zip file not created${NC}\n"
     exit 1
 fi
 
-echo ""
-echo "========================================="
-echo "✅ SUCCESS: Python Lambda Layer Created"
-echo "========================================="
-echo "📁 File: $ORIGINAL_DIR/$LAYER_NAME"
-echo "🐍 Python: $PYTHON_VERSION"
-echo "⚡ Tool: $(if [ "$USE_UV" = true ]; then echo "UV"; else echo "pip/venv"; fi)"
-echo "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)"
-echo "📊 Package Count: $PACKAGE_COUNT"
-echo ""
+printf "\n"
+printf "${BLUE}=========================================${NC}\n"
+printf "${GREEN}✅ SUCCESS: Python Lambda Layer Created${NC}\n"
+printf "${BLUE}=========================================${NC}\n"
+printf "📁 File: $ORIGINAL_DIR/$LAYER_NAME\n"
+printf "🐍 Python: $PYTHON_VERSION\n"
+printf "⚡ Tool: $(if [ "$USE_UV" = true ]; then echo "UV"; else echo "pip/venv"; fi)\n"
+printf "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)\n"
+printf "📊 Package Count: $PACKAGE_COUNT\n"
+printf "\n"
