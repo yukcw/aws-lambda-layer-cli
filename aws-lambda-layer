@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# AWS Lambda Layer CLI Tool
+# Install: sudo ./install.sh
+# Usage: aws-lambda-layer publish --nodejs -i express,axios -n my-layer
+
+set -e
+set -u
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NODE_SCRIPT="$SCRIPT_DIR/create_nodejs_layer.sh"
+PYTHON_SCRIPT="$SCRIPT_DIR/create_python_layer.sh"
+INSTALL_DIR="/usr/local/lib/aws-lambda-layer"
+BIN_DIR="/usr/local/bin"
+COMPLETION_DIR="/etc/bash_completion.d"
+
+# Show help
+show_help() {
+    cat << EOF
+${GREEN}AWS Lambda Layer Creator${NC}
+
+${BLUE}Usage:${NC}
+  aws-lambda-layer publish --nodejs [options]
+  aws-lambda-layer publish --python [options]
+  aws-lambda-layer --help
+
+${BLUE}Commands:${NC}
+  publish        Create and package a Lambda layer
+
+${BLUE}Runtime Options:${NC}
+  --nodejs, --node, -n    Create a Node.js Lambda layer
+  --python, --py, -p      Create a Python Lambda layer
+
+${BLUE}Common Options:${NC}
+  -i, --packages          Comma-separated list of packages (required)
+  --name                  Name of the output zip file
+  -h, --help              Show this help message
+
+${BLUE}Node.js Specific Options:${NC}
+  --node-version          Node.js version (e.g., 18, 20)
+
+${BLUE}Python Specific Options:${NC}
+  --python-version        Python version (e.g., 3.9, 3.11)
+  --no-uv                 Use pip/venv instead of uv
+
+${BLUE}Examples:${NC}
+  aws-lambda-layer publish --nodejs -i express,axios
+  aws-lambda-layer publish --python -i numpy,pandas --python-version=3.11
+  aws-lambda-layer publish -n express,lodash --node-version=20 --name=express-layer.zip
+  aws-lambda-layer publish -p requests,boto3 --no-uv
+
+${YELLOW}Note:${NC} Use tab completion for command hints!
+EOF
+}
+
+# Show version
+show_version() {
+    echo "aws-lambda-layer v1.0.0"
+    echo "AWS Lambda Layer Creator CLI Tool"
+}
+
+# Publish command handler
+handle_publish() {
+    local runtime=""
+    local args=()
+    
+    # Parse runtime flag
+    case "$1" in
+        --nodejs|--node|-n)
+            runtime="nodejs"
+            shift
+            ;;
+        --python|--py|-p)
+            runtime="python"
+            shift
+            ;;
+        *)
+            echo -e "${RED}Error: Missing or invalid runtime specification${NC}"
+            echo "Use --nodejs, --node, -n for Node.js or --python, --py, -p for Python"
+            exit 1
+            ;;
+    esac
+    
+    # Pass remaining arguments to the appropriate script
+    if [ "$runtime" = "nodejs" ]; then
+        if [ ! -f "$NODE_SCRIPT" ]; then
+            echo -e "${RED}Error: Node.js script not found at $NODE_SCRIPT${NC}"
+            echo "Please run install.sh first"
+            exit 1
+        fi
+        "$NODE_SCRIPT" "$@"
+    elif [ "$runtime" = "python" ]; then
+        if [ ! -f "$PYTHON_SCRIPT" ]; then
+            echo -e "${RED}Error: Python script not found at $PYTHON_SCRIPT${NC}"
+            echo "Please run install.sh first"
+            exit 1
+        fi
+        "$PYTHON_SCRIPT" "$@"
+    fi
+}
+
+# Main command parsing
+main() {
+    if [ $# -eq 0 ]; then
+        show_help
+        exit 0
+    fi
+    
+    case "$1" in
+        publish)
+            shift
+            handle_publish "$@"
+            ;;
+        --help|-h)
+            show_help
+            ;;
+        --version|-v)
+            show_version
+            ;;
+        *)
+            echo -e "${RED}Error: Unknown command '$1'${NC}"
+            echo "Available commands: publish"
+            echo "Use --help for more information"
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function with all arguments
+main "$@"
