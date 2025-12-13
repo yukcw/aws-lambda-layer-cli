@@ -71,8 +71,8 @@ fi
 
 printf "${GREEN}✅ Installation complete!${NC}\n\n"
 printf "${BLUE}Usage examples:${NC}\n"
-printf "  aws-lambda-layer zip --nodejs -i express@4.18.2\n"
-printf "  aws-lambda-layer zip --python -i numpy==1.26.0\n\n"
+printf "  aws-lambda-layer zip --nodejs express@4.18.2\n"
+printf "  aws-lambda-layer zip --python numpy==1.26.0\n\n"
 printf "${YELLOW}Note: You may need to restart your shell or run:${NC}\n"
 printf "  source ~/.bashrc  # for bash\n"
 printf "  or\n"
