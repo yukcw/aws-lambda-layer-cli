@@ -6,7 +6,8 @@ _aws_lambda_layer() {
 
     local commands="zip publish help --help --version"
     local runtime_opts="--nodejs --node -n --python --py -p --runtime"
-    local common_opts="-i --packages --name -h --help"
+    local common_opts="--name -h --help"
+    local publish_opts="--description --layer-name --profile --region"
     local node_opts="--node-version"
     local python_opts="--python-version --no-uv"
 
@@ -19,6 +20,25 @@ _aws_lambda_layer() {
             if [[ ${words[1]} == "zip" ]] || [[ ${words[1]} == "publish" ]]; then
                 # Second argument for zip/publish: runtime
                 COMPREPLY=($(compgen -W "${runtime_opts}" -- "${cur}"))
+            fi
+            ;;
+        3)
+            # Third argument: packages (positional)
+            if [[ ${words[1]} == "zip" ]] || [[ ${words[1]} == "publish" ]]; then
+                # Suggest package format based on runtime
+                local has_runtime=""
+                for word in "${words[@]:2}"; do
+                    case ${word} in
+                        --nodejs|--node|-n|--runtime=nodejs)
+                            COMPREPLY=("express@4.18.2,lodash")
+                            return
+                            ;;
+                        --python|--py|-p|--runtime=python)
+                            COMPREPLY=("numpy==1.26.0,pandas")
+                            return
+                            ;;
+                    esac
+                done
             fi
             ;;
         *)
@@ -59,12 +79,17 @@ _aws_lambda_layer() {
                     COMPREPLY=($(compgen -W "${runtime_opts}" -- "${cur}"))
                 else
                     # Runtime chosen, now show appropriate options
+                    local cmd_opts="${common_opts}"
+                    if [[ ${words[1]} == "publish" ]]; then
+                        cmd_opts="${cmd_opts} ${publish_opts}"
+                    fi
+                    
                     case ${runtime} in
                         nodejs)
-                            COMPREPLY=($(compgen -W "${common_opts} ${node_opts}" -- "${cur}"))
+                            COMPREPLY=($(compgen -W "${cmd_opts} ${node_opts}" -- "${cur}"))
                             ;;
                         python)
-                            COMPREPLY=($(compgen -W "${common_opts} ${python_opts}" -- "${cur}"))
+                            COMPREPLY=($(compgen -W "${cmd_opts} ${python_opts}" -- "${cur}"))
                             ;;
                     esac
                 fi

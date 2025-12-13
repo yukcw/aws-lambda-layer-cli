@@ -12,36 +12,41 @@ _aws-lambda-layer() {
     )
     
     runtime_opts=(
-        '--nodejs[Create Node.js layer]'
-        '--node[Create Node.js layer]'
-        '-n[Create Node.js layer]'
-        '--python[Create Python layer]'
-        '--py[Create Python layer]'
-        '-p[Create Python layer]'
-        '--runtime[Specify runtime]:runtime:(nodejs python)'
-        '--runtime=-[Specify runtime]:runtime:(nodejs python)'
+        '--nodejs:Node.js runtime'
+        '--node:Node.js runtime'
+        '-n:Node.js runtime'
+        '--python:Python runtime'
+        '--py:Python runtime'
+        '-p:Python runtime'
+        '--runtime:runtime:(nodejs python)'
     )
     
     common_opts=(
-        '--packages[Comma-separated packages with versions]:packages:'
-        '-i[Comma-separated packages with versions]:packages:'
-        '--name[Output file name]:name:'
-        '--help[Show help]'
-        '-h[Show help]'
+        '--name:name:'
+        '--help'
+        '-h'
+    )
+    
+    publish_opts=(
+        '--description:description:'
+        '--layer-name:layer-name:'
+        '--profile:profile:'
+        '--region:region:'
     )
     
     node_opts=(
-        '--node-version[Node.js version (default: 24)]:version:'
+        '--node-version:version:'
     )
     
     python_opts=(
-        '--python-version[Python version (default: 3.14)]:version:'
-        '--no-uv[Use pip/venv instead of uv]'
+        '--python-version:version:'
+        '--no-uv'
     )
     
     _arguments -C \
         '1: :->command' \
         '2: :->runtime_or_option' \
+        '3: :->packages' \
         '*: :->options'
     
     case $state in
@@ -52,6 +57,10 @@ _aws-lambda-layer() {
             if [[ $words[2] == "zip" ]] || [[ $words[2] == "publish" ]]; then
                 _describe 'runtime' runtime_opts
             fi
+            ;;
+        packages)
+            # After runtime, expect packages as positional argument
+            _message 'comma-separated packages (e.g., express@4.18.2,lodash)'
             ;;
         options)
             # Check if runtime is already specified
@@ -70,15 +79,23 @@ _aws-lambda-layer() {
             done
             
             if [[ -n $runtime ]]; then
+                # Check if this is publish command for extra options
+                local cmd_opts=()
+                if [[ $words[2] == "publish" ]]; then
+                    cmd_opts=($common_opts $publish_opts)
+                else
+                    cmd_opts=($common_opts)
+                fi
+                
                 case $runtime in
                     nodejs)
                         _arguments -s \
-                            $common_opts \
+                            $cmd_opts \
                             $node_opts
                         ;;
                     python)
                         _arguments -s \
-                            $common_opts \
+                            $cmd_opts \
                             $python_opts
                         ;;
                 esac

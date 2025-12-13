@@ -63,17 +63,31 @@ else
 fi
 
 # Install zsh completion
-if [ -d "/usr/local/share/zsh/site-functions" ]; then
-    printf "${BLUE}Installing zsh completion...${NC}\n"
-    $SUDO cp "$SCRIPT_DIR/completion/aws-lambda-layer-completion.zsh" "/usr/local/share/zsh/site-functions/_aws-lambda-layer"
-    printf "${GREEN}Zsh completion installed.${NC}\n"
+printf "${BLUE}Installing zsh completion...${NC}\n"
+# Try Homebrew location first (macOS with Homebrew), then standard location
+ZSH_COMPLETION_DIR=""
+if [ -d "/opt/homebrew/share/zsh/site-functions" ]; then
+    ZSH_COMPLETION_DIR="/opt/homebrew/share/zsh/site-functions"
+elif [ -d "/usr/local/share/zsh/site-functions" ]; then
+    ZSH_COMPLETION_DIR="/usr/local/share/zsh/site-functions"
+else
+    # Create standard location if neither exists
+    ZSH_COMPLETION_DIR="/usr/local/share/zsh/site-functions"
+    printf "${YELLOW}Creating zsh completion directory...${NC}\n"
+    $SUDO mkdir -p "$ZSH_COMPLETION_DIR"
+fi
+
+if [ -n "$ZSH_COMPLETION_DIR" ]; then
+    $SUDO cp "$SCRIPT_DIR/completion/aws-lambda-layer-completion.zsh" "$ZSH_COMPLETION_DIR/_aws-lambda-layer"
+    printf "${GREEN}Zsh completion installed to: $ZSH_COMPLETION_DIR${NC}\n"
 fi
 
 printf "${GREEN}✅ Installation complete!${NC}\n\n"
 printf "${BLUE}Usage examples:${NC}\n"
 printf "  aws-lambda-layer zip --nodejs express@4.18.2\n"
 printf "  aws-lambda-layer zip --python numpy==1.26.0\n\n"
-printf "${YELLOW}Note: You may need to restart your shell or run:${NC}\n"
-printf "  source ~/.bashrc  # for bash\n"
-printf "  or\n"
-printf "  exec zsh          # for zsh\n"
+printf "${YELLOW}To enable tab completion, restart your shell:${NC}\n"
+printf "  For bash: source ~/.bashrc\n"
+printf "  For zsh:  exec zsh\n\n"
+printf "${YELLOW}Or reload zsh completions:${NC}\n"
+printf "  autoload -U compinit && compinit\n"
