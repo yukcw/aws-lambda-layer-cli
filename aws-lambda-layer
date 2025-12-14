@@ -64,7 +64,7 @@ show_help() {
     printf "  --no-uv                 Use pip/venv instead of uv\n\n"
     
     printf "${BLUE}Package Version Examples:${NC}\n"
-    printf "  Node.js:    express@4.18.2,date-fns@3.0.0,@aws-sdk/client-lambda@3.515.0\n"
+    printf "  Node.js:    express@4.18.2,@babel/core@7.23.0,@babel/types@7.23.0\n"
     printf "  Python:     numpy==1.26.0,pandas==2.1.3,requests>=2.31.0\n\n"
     
     printf "${BLUE}Examples:${NC}\n"
@@ -72,7 +72,7 @@ show_help() {
     printf "  aws-lambda-layer zip --python numpy==1.26.0,pandas==2.1.3\n"
     printf "  aws-lambda-layer publish --nodejs express@4.18.2 --description \"Express layer\"\n"
     printf "  aws-lambda-layer publish --python numpy==1.26.0 --description \"NumPy layer\"\n"
-    printf "  aws-lambda-layer publish --nodejs axios,lodash --name utility-layer --description \"Utility packages\"\n\n"
+    printf "  aws-lambda-layer publish --nodejs date-fns,uuid --name utility-layer --description \"Utility packages\"\n\n"
     
     printf "${YELLOW}Requirements for publish command:${NC}\n"
     printf "  - AWS CLI installed and configured\n"

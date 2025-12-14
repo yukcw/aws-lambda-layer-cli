@@ -1,6 +1,6 @@
 # AWS Lambda Layer CLI Tool
 
-A powerful command-line tool for creating and publishing AWS Lambda layers for Node.js and Python.
+A ~~powerful~~ vibe-coded command-line tool for creating and publishing AWS Lambda layers for Node.js and Python.
 
 ## Features
 
@@ -17,6 +17,8 @@ A powerful command-line tool for creating and publishing AWS Lambda layers for N
 
 ## Installation
 
+### Linux/macOS
+
 ```bash
 # Clone or download the repository
 git clone <repository-url>
@@ -31,10 +33,70 @@ The installation will:
 - Create a symlink in `/usr/local/bin` for global access
 - Install shell completions for bash and zsh
 
+### Windows
+
+#### Option 1: PowerShell (Recommended)
+
+```powershell
+# One-liner installation
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/install.ps1 | iex"
+```
+
+Or download and run manually:
+
+```powershell
+# Download the installer
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/install.ps1" -OutFile "install.ps1"
+
+# Run the installer (as Administrator)
+.\install.ps1
+```
+
+This will:
+- Download the tool to `%USERPROFILE%\.aws-lambda-layer`
+- Add it to your PATH
+- Create Windows wrapper scripts
+
+#### Option 2: Manual Installation
+
+1. Install prerequisites:
+   - [Git for Windows](https://gitforwindows.org/) (includes Git Bash)
+   - [AWS CLI](https://aws.amazon.com/cli/) (for publish command)
+
+2. Download the scripts from the [releases page](https://github.com/yukcw/aws-lambda-layer-cli/releases)
+
+3. Extract to a directory and add to PATH
+
+### Requirements
+
+- **Linux/macOS**: Bash shell
+- **Windows**: Windows Subsystem for Linux (WSL) or Git Bash
+- **AWS CLI**: Required for `publish` command
+- **Node.js**: Required for Node.js layer creation
+- **Python**: Required for Python layer creation (uv recommended)
+
 ## Uninstallation
+
+### Linux/macOS
 
 ```bash
 sudo ./uninstall.sh
+```
+
+### Windows
+
+#### Using PowerShell
+
+```powershell
+# Download and run the uninstaller
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/uninstall.ps1" -OutFile "uninstall.ps1"
+.\uninstall.ps1
+```
+
+Or run directly without downloading:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/uninstall.ps1 | iex"
 ```
 
 ## Usage
@@ -103,7 +165,7 @@ aws-lambda-layer zip --nodejs axios,lodash --name utility-layer
 aws-lambda-layer zip --nodejs express@4.18.2 --node-version 20
 
 # Scoped packages
-aws-lambda-layer zip --nodejs @aws-sdk/client-lambda@3.515.0,@aws-sdk/client-s3
+aws-lambda-layer zip --nodejs @babel/core@7.23.0,@babel/types@7.23.0
 ```
 
 #### Publish to AWS
@@ -113,7 +175,7 @@ aws-lambda-layer zip --nodejs @aws-sdk/client-lambda@3.515.0,@aws-sdk/client-s3
 aws-lambda-layer publish --nodejs express@4.18.2 --description "Express layer"
 
 # With custom layer name
-aws-lambda-layer publish --nodejs axios,lodash --name utility-layer --description "Utility packages"
+aws-lambda-layer publish --nodejs date-fns,uuid --name utility-layer --description "Utility packages"
 
 # Using specific AWS profile
 aws-lambda-layer publish --nodejs express@4.18.2 --profile production --description "Express layer"
@@ -137,7 +199,7 @@ aws-lambda-layer zip --python numpy==1.26.0
 aws-lambda-layer zip --python numpy==1.26.0,pandas==2.1.3,requests>=2.31.0
 
 # With custom name
-aws-lambda-layer zip --python requests,boto3 --name aws-utils
+aws-lambda-layer zip --python requests,pytz --name web-utils
 
 # With specific Python version
 aws-lambda-layer zip --python numpy==1.26.0 --python-version 3.12
@@ -153,7 +215,7 @@ aws-lambda-layer zip --python pandas==2.1.3 --no-uv
 aws-lambda-layer publish --python numpy==1.26.0 --description "NumPy layer"
 
 # Multiple packages with description
-aws-lambda-layer publish --python requests==2.31.0,boto3==1.34.0 --description "AWS utilities"
+aws-lambda-layer publish --python requests==2.31.0,pytz==2023.3 --description "Web utilities"
 
 # Using specific AWS profile
 aws-lambda-layer publish --python pandas==2.1.3 --profile production --description "Pandas layer"
@@ -171,13 +233,13 @@ aws-lambda-layer publish --python scikit-learn --profile ml-account --region eu-
 - `express@4.18.2` - Exact version
 - `axios` - Latest version
 - `lodash@^4.17.0` - Compatible version
-- `@aws-sdk/client-lambda@3.515.0` - Scoped package with version
+- `@babel/core@7.23.0,@babel/types@7.23.0` - Multiple scoped packages
 
 ### Python
 - `numpy==1.26.0` - Exact version
 - `pandas` - Latest version
 - `requests>=2.31.0` - Minimum version
-- `boto3~=1.34.0` - Compatible version
+- `pytz~=2023.3` - Compatible version
 
 ## Publishing to AWS
 
