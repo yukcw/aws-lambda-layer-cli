@@ -69,7 +69,7 @@ extract_package_name() {
 # Example: requests>=2.31.0 -> >=2.31.0
 extract_version_spec() {
     local pkg="$1"
-    if [[ "$pkg" =~ [=<>!~] ]]; then
+    if [[ "$pkg" =~ [\=\<\>!~] ]]; then
         echo "$pkg" | grep -o '[=<>!~].*' || echo ""
     else
         echo ""
@@ -379,8 +379,34 @@ printf "${BLUE}=========================================${NC}\n"
 printf "${GREEN}✅ SUCCESS: Python Lambda Layer Created${NC}\n"
 printf "${BLUE}=========================================${NC}\n"
 printf "📁 File: $ORIGINAL_DIR/$LAYER_NAME\n"
-printf "🐍 Python: $PYTHON_VERSION\n"
+printf "🐍 Python Version: $PYTHON_VERSION\n"
 printf "⚡ Tool: $(if [ "$USE_UV" = true ]; then echo "UV"; else echo "pip/venv"; fi)\n"
 printf "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)\n"
 printf "📊 Package Count: $PACKAGE_COUNT\n"
+
+# Output installed packages with versions for description
+printf "Installed packages: "
+cd "$WORK_DIR/python"
+INSTALLED_PKGS=""
+IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
+for pkg_full in "${PKG_ARRAY[@]}"; do
+    pkg_name=$(extract_package_name "$pkg_full")
+    
+    # Get installed version from pip show or metadata
+    if [ "$USE_UV" = true ]; then
+        installed_ver=$(find . -type f -name "METADATA" -path "*/${pkg_name}-*.dist-info/METADATA" -exec grep -h "^Version:" {} \; | head -1 | cut -d' ' -f2)
+    else
+        installed_ver=$(find . -type f -name "METADATA" -path "*/${pkg_name}-*.dist-info/METADATA" -exec grep -h "^Version:" {} \; | head -1 | cut -d' ' -f2)
+    fi
+    
+    if [ -n "$installed_ver" ]; then
+        if [ -n "$INSTALLED_PKGS" ]; then
+            INSTALLED_PKGS="$INSTALLED_PKGS, ${pkg_name}==${installed_ver}"
+        else
+            INSTALLED_PKGS="${pkg_name}==${installed_ver}"
+        fi
+    fi
+done
+printf "$INSTALLED_PKGS\n"
+
 printf "\n"

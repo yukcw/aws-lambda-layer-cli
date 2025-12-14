@@ -410,7 +410,37 @@ fi
 printf "\n"
 printf "${GREEN}✅ Node.js Lambda layer created successfully!${NC}\n"
 printf "📁 File: $ORIGINAL_DIR/$LAYER_NAME\n"
+printf "🚀 Node.js Version: $NODE_VERSION_USED\n"
 printf "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)\n"
-printf "📊 Packages installed: $PACKAGE_COUNT\n"
-printf "🚀 Node.js version: $NODE_VERSION_USED\n"
+printf "📊 Package Count: $PACKAGE_COUNT\n"
+
+# Output installed packages with versions for description
+printf "Installed packages: "
+IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
+INSTALLED_PKGS=""
+for pkg_full in "${PKG_ARRAY[@]}"; do
+    pkg_name=$(extract_package_name "$pkg_full")
+    
+    # Find package.json
+    if [[ "$pkg_name" == @* ]]; then
+        scope=$(echo "$pkg_name" | cut -d'/' -f1)
+        pkg=$(echo "$pkg_name" | cut -d'/' -f2)
+        pkg_json="$NODE_DIR/node_modules/$scope/$pkg/package.json"
+    else
+        pkg_json="$NODE_DIR/node_modules/$pkg_name/package.json"
+    fi
+    
+    if [ -f "$pkg_json" ]; then
+        installed_ver=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg_json" | head -1 | cut -d'"' -f4)
+        if [ -n "$installed_ver" ]; then
+            if [ -n "$INSTALLED_PKGS" ]; then
+                INSTALLED_PKGS="$INSTALLED_PKGS, ${pkg_name}@${installed_ver}"
+            else
+                INSTALLED_PKGS="${pkg_name}@${installed_ver}"
+            fi
+        fi
+    fi
+done
+printf "$INSTALLED_PKGS\n"
+
 printf "\n"

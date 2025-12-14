@@ -499,6 +499,14 @@ handle_publish() {
         fi
         "$NODE_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
         
+        # Check if build script succeeded
+        if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            cd "$current_dir"
+            printf "${RED}Error: Node.js layer build failed${NC}\n"
+            printf "Check build log: $output_dir/build.log\n"
+            exit 1
+        fi
+        
         # Extract zip file name from build output (just the filename, not full path)
         zip_file=$(grep -o "File: .*\.zip" "build.log" | cut -d' ' -f2 | tail -1)
         if [ -n "$zip_file" ]; then
@@ -522,6 +530,14 @@ handle_publish() {
             exit 1
         fi
         "$PYTHON_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
+        
+        # Check if build script succeeded
+        if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            cd "$current_dir"
+            printf "${RED}Error: Python layer build failed${NC}\n"
+            printf "Check build log: $output_dir/build.log\n"
+            exit 1
+        fi
         
         # Extract zip file name from build output (just the filename, not full path)
         zip_file=$(grep -o "File: .*\.zip" "build.log" | cut -d' ' -f2 | tail -1)
@@ -551,9 +567,9 @@ handle_publish() {
     # Extract package info for layer naming and description
     local packages_info=""
     if [ "$runtime" = "nodejs" ]; then
-        packages_info=$(grep -o "Packages: .*" "build.log" | cut -d' ' -f2- | tail -1)
+        packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
     elif [ "$runtime" = "python" ]; then
-        packages_info=$(grep -o "Packages: .*" "build.log" | cut -d' ' -f2- | tail -1)
+        packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
     fi
     
     # Determine layer name - use just the first package name if not specified
