@@ -213,6 +213,18 @@ function Install-Dependencies {
                     & winget install --id GnuWin32.Zip -e --source winget
                     if ($LASTEXITCODE -eq 0) {
                         Write-ColorOutput "✓ GnuWin32 Zip installed" $Green
+                        
+                        # Add GnuWin32 to PATH
+                        $gnuWin32Path = "${env:ProgramFiles(x86)}\GnuWin32\bin"
+                        if (Test-Path $gnuWin32Path) {
+                            $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+                            if ($currentPath -notlike "*$gnuWin32Path*") {
+                                $newPath = "$currentPath;$gnuWin32Path"
+                                [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+                                Write-ColorOutput "✓ Added $gnuWin32Path to user PATH" $Green
+                            }
+                        }
+
                         Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
                         $Prereqs.Zip = $true
                     } else {
