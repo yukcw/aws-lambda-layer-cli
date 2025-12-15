@@ -34,7 +34,6 @@ param(
 
 # Configuration
 $RepoUrl = "https://github.com/yukcw/aws-lambda-layer-cli"
-$ReleaseUrl = "$RepoUrl/releases/latest/download"
 $ToolName = "aws-lambda-layer"
 $Version = "1.2.0"
 
@@ -133,32 +132,6 @@ function Test-Prerequisites {
     }
 }
 
-function Get-LatestRelease {
-    Write-ColorOutput "Fetching latest release information..." $Yellow
-
-    try {
-        $apiUrl = "https://api.github.com/repos/yukcw/aws-lambda-layer-cli/releases/latest"
-        $response = Invoke-RestMethod -Uri $apiUrl -Method Get
-
-        $asset = $response.assets | Where-Object { $_.name -eq "aws-lambda-layer-cli.zip" } | Select-Object -First 1
-
-        if ($asset) {
-            return @{
-                Version = $response.tag_name
-                DownloadUrl = $asset.browser_download_url
-                Size = $asset.size
-            }
-        } else {
-            Write-ColorOutput "Warning: Pre-built zip not found, will download individual files" $Yellow
-            return $null
-        }
-    } catch {
-        Write-ColorOutput "Warning: Could not fetch release info, will download individual files" $Yellow
-        Write-ColorOutput "Error: $($_.Exception.Message)" $Red
-        return $null
-    }
-}
-
 function Install-Tool {
     param([hashtable]$Prereqs)
 
@@ -181,27 +154,8 @@ function Install-Tool {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     Write-ColorOutput "Created install directory: $InstallDir" $Green
 
-    # Try to download pre-built zip first
-    $releaseInfo = Get-LatestRelease
-    $tempZip = "$env:TEMP\aws-lambda-layer-cli.zip"
-
-    if ($releaseInfo) {
-        Write-ColorOutput "Downloading pre-built package..." $Yellow
-        try {
-            Invoke-WebRequest -Uri $releaseInfo.DownloadUrl -OutFile $tempZip
-            Write-ColorOutput "Extracting package..." $Yellow
-            Expand-Archive -Path $tempZip -DestinationPath $InstallDir -Force
-            Remove-Item $tempZip -Force
-            Write-ColorOutput "✓ Package extracted successfully" $Green
-        } catch {
-            Write-ColorOutput "Failed to download pre-built package, falling back to individual files" $Yellow
-            Remove-Item $tempZip -ErrorAction SilentlyContinue
-        }
-    }
-
-    # If zip download failed or no pre-built zip, download individual files
-    if (-not (Test-Path "$InstallDir\$ToolName")) {
-        Write-ColorOutput "Downloading individual files..." $Yellow
+    # Download individual files
+    Write-ColorOutput "Downloading files..." $Yellow
 
         $files = @(
             "aws-lambda-layer",
@@ -250,13 +204,23 @@ function Install-Tool {
         }
     }
 
-    # Make scripts executable
+    # Make scripts executable (for bash environment)
     Write-ColorOutput "Setting executable permissions..." $Yellow
     $scriptFiles = Get-ChildItem $InstallDir -Filter "*.sh" -File
+    # Also include the main script
+    $scriptFiles += Get-Item "$InstallDir\$ToolName" -ErrorAction SilentlyContinue
+    
     foreach ($file in $scriptFiles) {
         try {
-            # On Windows, we can't set +x directly, but the bash environment will handle it
-            Write-ColorOutput "✓ Prepared $($file.Name)" $Green
+            # On Windows, we can't set +x directly, but we can ensure the file is readable
+            # The bash environment will handle execution
+            if ($file.Extension -eq ".sh" -or $file.Name -eq $ToolName) {
+                # Ensure Unix line endings for bash scripts
+                $content = Get-Content $file.FullName -Raw
+                $content = $content -replace "`r`n", "`n"
+                [System.IO.File]::WriteAllText($file.FullName, $content, [System.Text.Encoding]::ASCII)
+                Write-ColorOutput "✓ Prepared $($file.Name)" $Green
+            }
         } catch {
             Write-ColorOutput "! Could not prepare $($file.Name)" $Yellow
         }
@@ -287,13 +251,36 @@ function Setup-Path {
 REM AWS Lambda Layer CLI Tool Wrapper for Windows
 REM This script helps run the tool in the appropriate bash environment
 
+setlocal enabledelayedexpansion
+
+REM Convert Windows path to Unix-style path for bash
+set "WIN_PATH=$InstallDir"
+set "UNIX_PATH=!WIN_PATH:\=/!"
+set "UNIX_PATH=!UNIX_PATH::=!"
+
+REM Remove drive letter prefix for WSL paths (e.g., /c/ instead of c:/)
+if "!UNIX_PATH:~1,1!"==":" (
+    set "UNIX_PATH=/!UNIX_PATH:~0,1!!UNIX_PATH:~2!"
+)
+
 where bash >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
-    bash "$InstallDir\$ToolName" %*
+    REM Try to run with bash
+    bash "!UNIX_PATH!/$ToolName" %*
+    if !ERRORLEVEL! NEQ 0 (
+        echo Error: Failed to execute aws-lambda-layer
+        echo Please check that the script exists and is executable
+        echo Script path: !UNIX_PATH!/$ToolName
+        pause
+        exit /b 1
+    )
 ) else (
     echo Error: bash not found in PATH
     echo Please install Git for Windows or WSL
     echo https://gitforwindows.org/
+    echo.
+    echo Alternatively, you can run the script directly with:
+    echo bash "!UNIX_PATH!/$ToolName" [arguments]
     pause
     exit /b 1
 )

@@ -63,7 +63,7 @@ This will:
    - [Git for Windows](https://gitforwindows.org/) (includes Git Bash)
    - [AWS CLI](https://aws.amazon.com/cli/) (for publish command)
 
-2. Download the scripts from the [releases page](https://github.com/yukcw/aws-lambda-layer-cli/releases)
+2. Download the scripts from the [repository](https://github.com/yukcw/aws-lambda-layer-cli)
 
 3. Extract to a directory and add to PATH
 
@@ -98,7 +98,21 @@ Or run directly without downloading:
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/uninstall.ps1 | iex"
 ```
+#### Troubleshooting Windows Installation
 
+If you encounter issues:
+
+1. **"bash: command not found"**
+   - Install [Git for Windows](https://gitforwindows.org/) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
+   - Restart PowerShell/Command Prompt after installation
+
+2. **"No such file or directory"**
+   - Try running: `bash "$env:USERPROFILE\.aws-lambda-layer\aws-lambda-layer" --help`
+   - Or reinstall: `powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/install.ps1 | iex"`
+
+3. **Permission issues**
+   - Run PowerShell as Administrator
+   - Or run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 ## Usage
 
 ### Basic Syntax
