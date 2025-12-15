@@ -142,6 +142,7 @@ function Test-Prerequisites {
     $hasZipGitBash = $false
     $hasPythonWSL = $false
     $hasVenvWSL = $false
+    $hasEnsurePipWSL = $false
     $hasPythonGitBash = $false
     $hasNodeWSL = $false
     $hasNodeGitBash = $false
@@ -179,6 +180,17 @@ function Test-Prerequisites {
                 Write-ColorOutput "! python venv module not found in WSL" $Yellow
             }
         } catch { Write-ColorOutput "! Failed to check python venv in WSL" $Yellow }
+
+        try {
+            # Check for ensurepip
+            $wslEnsurePip = wsl bash -c "python3 -c 'import ensurepip' 2>/dev/null || python -c 'import ensurepip' 2>/dev/null" 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                $hasEnsurePipWSL = $true
+                Write-ColorOutput "✓ python ensurepip module found in WSL" $Green
+            } else {
+                Write-ColorOutput "! python ensurepip module not found in WSL" $Yellow
+            }
+        } catch { Write-ColorOutput "! Failed to check python ensurepip in WSL" $Yellow }
 
         try {
             $wslNode = wsl node --version 2>$null
@@ -220,6 +232,7 @@ function Test-Prerequisites {
         ZipGitBash = $hasZipGitBash
         PythonWSL = $hasPythonWSL
         VenvWSL = $hasVenvWSL
+        EnsurePipWSL = $hasEnsurePipWSL
         PythonGitBash = $hasPythonGitBash
         NodeWSL = $hasNodeWSL
         NodeGitBash = $hasNodeGitBash
@@ -306,12 +319,12 @@ function Install-Dependencies {
         }
     }
 
-    if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.NodeWSL -or -not $Prereqs.PythonGitBash -or -not $Prereqs.NodeGitBash -or -not $Prereqs.AwsCli) {
+    if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.EnsurePipWSL -or -not $Prereqs.NodeWSL -or -not $Prereqs.PythonGitBash -or -not $Prereqs.NodeGitBash -or -not $Prereqs.AwsCli) {
         Write-ColorOutput "`nChecking for missing dependencies..." $Yellow
         
         # Handle WSL dependencies
         if ($Prereqs.WSL) {
-            if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.NodeWSL) {
+            if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.EnsurePipWSL -or -not $Prereqs.NodeWSL) {
                 $installWslDeps = Read-Host "Missing dependencies in WSL. Try to install them? (Y/n)"
                 if ($installWslDeps -match "^[Yy]|^$") {
                     Write-ColorOutput "Attempting to install dependencies in WSL..." $Cyan
@@ -322,8 +335,8 @@ function Install-Dependencies {
                         if (-not $Prereqs.PythonWSL) {
                             Write-ColorOutput "Installing Python in WSL..." $Cyan
                             wsl sudo apt-get install -y python3 python3-pip python3-venv
-                        } elseif (-not $Prereqs.VenvWSL) {
-                            Write-ColorOutput "Installing Python venv in WSL..." $Cyan
+                        } elseif (-not $Prereqs.VenvWSL -or -not $Prereqs.EnsurePipWSL) {
+                            Write-ColorOutput "Installing Python venv (ensurepip) in WSL..." $Cyan
                             wsl sudo apt-get install -y python3-venv
                         }
                         if (-not $Prereqs.NodeWSL) {
@@ -456,8 +469,12 @@ function Install-Tool {
             if ($file.Extension -eq ".sh" -or $file.Name -eq $ToolName) {
                 # Ensure Unix line endings for bash scripts
                 $content = Get-Content $file.FullName -Raw
-                $content = $content -replace "`r`n", "`n"
-                [System.IO.File]::WriteAllText($file.FullName, $content, [System.Text.Encoding]::ASCII)
+                # Aggressively remove all carriage returns to ensure LF only
+                $content = $content -replace "`r", ""
+                
+                # Write with UTF-8 (No BOM) to ensure compatibility
+                $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                [System.IO.File]::WriteAllText($file.FullName, $content, $utf8NoBom)
                 Write-ColorOutput "✓ Prepared $($file.Name)" $Green
             }
         } catch {
