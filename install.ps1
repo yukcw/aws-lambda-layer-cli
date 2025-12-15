@@ -252,14 +252,45 @@ REM This script helps run the tool in the appropriate bash environment
 
 setlocal enabledelayedexpansion
 
-REM Convert Windows path to Unix-style path for bash
 set "WIN_PATH=$InstallDir"
-set "UNIX_PATH=!WIN_PATH:\=/!"
-set "UNIX_PATH=!UNIX_PATH::=!"
 
-REM Remove drive letter prefix for WSL paths (e.g., /c/ instead of c:/)
-if "!UNIX_PATH:~1,1!"==":" (
-    set "UNIX_PATH=/!UNIX_PATH:~0,1!!UNIX_PATH:~2!"
+REM Detect which bash is being used to determine path style
+set "IS_WSL=0"
+for /f "delims=" %%i in ('where bash') do (
+    echo "%%i" | findstr /i "System32" >nul
+    if !ERRORLEVEL! EQU 0 set "IS_WSL=1"
+    goto :DETECT_DONE
+)
+:DETECT_DONE
+
+if "!IS_WSL!"=="1" (
+    REM WSL Environment - use wslpath
+    where wsl >nul 2>nul
+    if !ERRORLEVEL! EQU 0 (
+        for /f "delims=" %%i in ('wsl wslpath -a "!WIN_PATH!"') do set "UNIX_PATH=%%i"
+    ) else (
+        REM Fallback for WSL if wsl.exe missing - assume /mnt/c/ style
+        set "UNIX_PATH=!WIN_PATH:\=/!"
+        if "!UNIX_PATH:~1,1!"==":" (
+            set "DRIVE=!UNIX_PATH:~0,1!"
+            REM Simple lowercase for common drives
+            if /i "!DRIVE!"=="C" set "DRIVE=c"
+            if /i "!DRIVE!"=="D" set "DRIVE=d"
+            set "UNIX_PATH=/mnt/!DRIVE!!UNIX_PATH:~2!"
+        )
+    )
+) else (
+    REM Git Bash / Cygwin Environment
+    where cygpath >nul 2>nul
+    if !ERRORLEVEL! EQU 0 (
+        for /f "delims=" %%i in ('cygpath "!WIN_PATH!"') do set "UNIX_PATH=%%i"
+    ) else (
+        REM Manual conversion fallback (Git Bash style /c/...)
+        set "UNIX_PATH=!WIN_PATH:\=/!"
+        if "!UNIX_PATH:~1,1!"==":" (
+            set "UNIX_PATH=/!UNIX_PATH:~0,1!!UNIX_PATH:~2!"
+        )
+    )
 )
 
 where bash >nul 2>nul
