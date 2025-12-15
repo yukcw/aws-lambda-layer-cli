@@ -17,6 +17,7 @@ WORK_DIR="$TEMP_DIR/layer-build"
 PACKAGES=""
 LAYER_NAME=""
 PYTHON_VERSION="3.14"  # Default to Python 3.14
+PYTHON_VERSION_SPECIFIED=false
 USE_UV=true
 ORIGINAL_DIR=$(pwd)
 
@@ -120,6 +121,7 @@ while [[ $# -gt 0 ]]; do
         --python-version)
             if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 PYTHON_VERSION="$2"
+                PYTHON_VERSION_SPECIFIED=true
                 validate_python_version "$PYTHON_VERSION"
                 shift 2
             else
@@ -130,6 +132,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --python-version=*)
             PYTHON_VERSION="${1#*=}"
+            PYTHON_VERSION_SPECIFIED=true
             validate_python_version "$PYTHON_VERSION"
             shift
             ;;
@@ -250,16 +253,42 @@ cd "$WORK_DIR"
 
 # Step 2: Create virtual environment
 printf "[2/7] Creating virtual environment...\n"
+
+TARGET_PYTHON="python${PYTHON_VERSION}"
+
+# Check if target python exists
+if ! command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
+    if [ "$PYTHON_VERSION_SPECIFIED" = false ]; then
+        printf "${YELLOW}Warning: Default $TARGET_PYTHON not found. Checking for fallback...${NC}\n"
+        if command -v python3 >/dev/null 2>&1; then
+            TARGET_PYTHON="python3"
+        elif command -v python >/dev/null 2>&1; then
+            TARGET_PYTHON="python"
+        else
+             printf "${RED}Error: No python interpreter found${NC}\n"
+             exit 1
+        fi
+        
+        # Update PYTHON_VERSION to match the fallback
+        DETECTED_VER=$($TARGET_PYTHON -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+        printf "${YELLOW}Falling back to $TARGET_PYTHON ($DETECTED_VER)${NC}\n"
+        PYTHON_VERSION="$DETECTED_VER"
+    fi
+fi
+
 if [ "$USE_UV" = true ]; then
     printf "  Using UV to create venv...\n"
-    uv venv --python "python${PYTHON_VERSION}" python
+    if ! uv venv --python "$TARGET_PYTHON" python; then
+         printf "${RED}Error: Failed to create venv with uv${NC}\n"
+         exit 1
+    fi
     source python/bin/activate
 else
     printf "  Using venv module...\n"
-    if command -v "python${PYTHON_VERSION}" >/dev/null 2>&1; then
-        "python${PYTHON_VERSION}" -m venv python
+    if command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
+        "$TARGET_PYTHON" -m venv python
     else
-        printf "${RED}Error: python${PYTHON_VERSION} not found${NC}\n"
+        printf "${RED}Error: $TARGET_PYTHON not found${NC}\n"
         exit 1
     fi
     source python/bin/activate

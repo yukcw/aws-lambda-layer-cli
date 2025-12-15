@@ -61,6 +61,8 @@ function Write-Header {
     Write-ColorOutput ""
 }
 
+
+
 function Test-Prerequisites {
     Write-ColorOutput "Checking prerequisites..." $Yellow
 
@@ -138,8 +140,10 @@ function Test-Prerequisites {
     # Check for other dependencies
     $hasZipWSL = $false
     $hasZipGitBash = $false
-    $hasPython = $false
-    $hasNode = $false
+    $hasPythonWSL = $false
+    $hasPythonGitBash = $false
+    $hasNodeWSL = $false
+    $hasNodeGitBash = $false
 
     # Check for zip in WSL
     if ($hasWSL) {
@@ -152,70 +156,48 @@ function Test-Prerequisites {
                 Write-ColorOutput "! zip not found in WSL" $Yellow
             }
         } catch { Write-ColorOutput "! Failed to check zip in WSL" $Yellow }
+
+        try {
+            # Check for python3 or python
+            $wslPython = wsl bash -c "command -v python3 || command -v python" 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                $hasPythonWSL = $true
+                Write-ColorOutput "✓ python found in WSL" $Green
+            } else {
+                Write-ColorOutput "! python not found in WSL" $Yellow
+            }
+        } catch { Write-ColorOutput "! Failed to check python in WSL" $Yellow }
+
+        try {
+            $wslNode = wsl node --version 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                $hasNodeWSL = $true
+                Write-ColorOutput "✓ node found in WSL" $Green
+            } else {
+                Write-ColorOutput "! node not found in WSL" $Yellow
+            }
+        } catch { Write-ColorOutput "! Failed to check node in WSL" $Yellow }
     }
 
-    # Check for zip in Git Bash
+    # Check for dependencies in Windows (for Git Bash)
     if ($hasGitBash) {
-        try {
-            $bashPath = $gitBashPath
-            
-            # 1. Try standard zip command
-            & $bashPath -c "zip --version" 2>$null | Out-Null
-            if ($LASTEXITCODE -eq 0) { 
-                $hasZipGitBash = $true
-                Write-ColorOutput "✓ zip found in Git Bash" $Green 
-            } else {
-                # 2. Try GnuWin32 path specifically
-                $gnuWin32Path = "${env:ProgramFiles(x86)}\GnuWin32\bin"
-                $zipExe = Join-Path $gnuWin32Path "zip.exe"
-                
-                if (Test-Path $zipExe) {
-                    # Verify it works via bash using full path
-                    # Convert to Git Bash path format: C:\Program Files (x86)... -> /c/Program Files (x86)...
-                    $drive = $gnuWin32Path.Substring(0,1).ToLower()
-                    $pathPart = $gnuWin32Path.Substring(2).Replace("\", "/")
-                    $bashZipPath = "/$drive$pathPart/zip"
-                    # Escape spaces and parentheses
-                    $bashZipPath = $bashZipPath.Replace(" ", "\ ").Replace("(", "\(").Replace(")", "\)")
-                    
-                    & $bashPath -c "$bashZipPath --version" 2>$null | Out-Null
-                    if ($LASTEXITCODE -eq 0) {
-                        $hasZipGitBash = $true
-                        Write-ColorOutput "✓ zip found at $zipExe" $Green
-                        
-                        # Fix PATHs
-                        # 1. Current Session
-                        if ("$env:Path" -notlike "*$gnuWin32Path*") {
-                            Write-ColorOutput "  Adding GnuWin32 to current session PATH" $Yellow
-                            $env:Path = "$env:Path;$gnuWin32Path"
-                        }
-                        
-                        # 2. Permanent User PATH
-                        $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-                        if ($currentPath -notlike "*$gnuWin32Path*") {
-                            $newPath = "$currentPath;$gnuWin32Path"
-                            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-                            Write-ColorOutput "  Added GnuWin32 to permanent User PATH" $Green
-                        }
-                    }
+        function Check-WindowsTool {
+            param($Name, $ExeName)
+            $cmd = Get-Command $ExeName -ErrorAction SilentlyContinue
+            if ($cmd) {
+                if ($cmd.Version -and $cmd.Version.ToString() -ne "0.0.0.0") {
+                    Write-ColorOutput "✓ $Name found ($($cmd.Version))" $Green
+                    return $true
                 }
             }
-            
-            if (-not $hasZipGitBash) {
-                Write-ColorOutput "! zip not found in Git Bash" $Yellow
-            }
-        } catch { Write-ColorOutput "! Failed to check zip in Git Bash" $Yellow }
+            Write-ColorOutput "! $Name not found in Windows PATH" $Yellow
+            return $false
+        }
+
+        $hasZipGitBash = Check-WindowsTool "zip" "zip.exe"
+        $hasPythonGitBash = Check-WindowsTool "python" "python.exe"
+        $hasNodeGitBash = Check-WindowsTool "node" "node.exe"
     }
-
-    try {
-        $pythonVersion = & python --version 2>$null
-        if ($LASTEXITCODE -eq 0) { $hasPython = $true; Write-ColorOutput "✓ python found" $Green }
-    } catch { Write-ColorOutput "! python not found" $Yellow }
-
-    try {
-        $nodeVersion = & node --version 2>$null
-        if ($LASTEXITCODE -eq 0) { $hasNode = $true; Write-ColorOutput "✓ node found" $Green }
-    } catch { Write-ColorOutput "! node not found" $Yellow }
 
     return @{
         WSL = $hasWSL
@@ -224,8 +206,10 @@ function Test-Prerequisites {
         AwsCli = $hasAwsCli
         ZipWSL = $hasZipWSL
         ZipGitBash = $hasZipGitBash
-        Python = $hasPython
-        Node = $hasNode
+        PythonWSL = $hasPythonWSL
+        PythonGitBash = $hasPythonGitBash
+        NodeWSL = $hasNodeWSL
+        NodeGitBash = $hasNodeGitBash
     }
 }
 
@@ -309,34 +293,65 @@ function Install-Dependencies {
         }
     }
 
-    if (-not $Prereqs.Python -or -not $Prereqs.Node -or -not $Prereqs.AwsCli) {
+    if (-not $Prereqs.PythonWSL -or -not $Prereqs.NodeWSL -or -not $Prereqs.PythonGitBash -or -not $Prereqs.NodeGitBash -or -not $Prereqs.AwsCli) {
         Write-ColorOutput "`nChecking for missing dependencies..." $Yellow
         
-        # Check if winget is available
-        try {
-            $wingetVersion = & winget --version 2>$null
-            if ($LASTEXITCODE -eq 0) {
-                $installDeps = Read-Host "Missing dependencies detected. Try to install them with winget? (Y/n)"
-                if ($installDeps -match "^[Yy]|^$") {
-                    if (-not $Prereqs.Python) {
-                        Write-ColorOutput "Installing Python..." $Cyan
-                        & winget install --id Python.Python.3.12 -e --source winget
+        # Handle WSL dependencies
+        if ($Prereqs.WSL) {
+            if (-not $Prereqs.PythonWSL -or -not $Prereqs.NodeWSL) {
+                $installWslDeps = Read-Host "Missing dependencies in WSL. Try to install them? (Y/n)"
+                if ($installWslDeps -match "^[Yy]|^$") {
+                    Write-ColorOutput "Attempting to install dependencies in WSL..." $Cyan
+                    try {
+                        Write-ColorOutput "Running: wsl sudo apt-get update" $White
+                        wsl sudo apt-get update
+                        
+                        if (-not $Prereqs.PythonWSL) {
+                            Write-ColorOutput "Installing Python in WSL..." $Cyan
+                            wsl sudo apt-get install -y python3 python3-pip
+                        }
+                        if (-not $Prereqs.NodeWSL) {
+                            Write-ColorOutput "Installing Node.js in WSL..." $Cyan
+                            wsl sudo apt-get install -y nodejs npm
+                        }
+                    } catch {
+                        Write-ColorOutput "✗ Failed to execute WSL commands." $Red
                     }
-                    if (-not $Prereqs.Node) {
-                        Write-ColorOutput "Installing Node.js..." $Cyan
-                        & winget install --id OpenJS.NodeJS.LTS -e --source winget
-                    }
-                    if (-not $Prereqs.AwsCli) {
-                        Write-ColorOutput "Installing AWS CLI..." $Cyan
-                        & winget install --id Amazon.AWSCLI -e --source winget
-                    }
-                    Write-ColorOutput "Dependencies installed. You may need to restart your terminal." $Green
                 }
-            } else {
-                Write-ColorOutput "winget not found. Please install missing dependencies manually." $Yellow
             }
-        } catch {
-            Write-ColorOutput "winget not found. Please install missing dependencies manually." $Yellow
+        }
+
+        # Handle Git Bash / Windows dependencies
+        # If Git Bash is present but missing deps, we install them in Windows so Git Bash inherits them
+        if ($Prereqs.GitBash) {
+            if (-not $Prereqs.PythonGitBash -or -not $Prereqs.NodeGitBash -or -not $Prereqs.AwsCli) {
+                # Check if winget is available
+                try {
+                    $wingetVersion = & winget --version 2>$null
+                    if ($LASTEXITCODE -eq 0) {
+                        $installDeps = Read-Host "Missing Windows dependencies (for Git Bash). Try to install them with winget? (Y/n)"
+                        if ($installDeps -match "^[Yy]|^$") {
+                            if (-not $Prereqs.PythonGitBash) {
+                                Write-ColorOutput "Installing Python..." $Cyan
+                                & winget install --id Python.Python.3.12 -e --source winget
+                            }
+                            if (-not $Prereqs.NodeGitBash) {
+                                Write-ColorOutput "Installing Node.js..." $Cyan
+                                & winget install --id OpenJS.NodeJS.LTS -e --source winget
+                            }
+                            if (-not $Prereqs.AwsCli) {
+                                Write-ColorOutput "Installing AWS CLI..." $Cyan
+                                & winget install --id Amazon.AWSCLI -e --source winget
+                            }
+                            Write-ColorOutput "Dependencies installed. You may need to restart your terminal." $Green
+                        }
+                    } else {
+                        Write-ColorOutput "winget not found. Please install missing dependencies manually." $Yellow
+                    }
+                } catch {
+                    Write-ColorOutput "winget not found. Please install missing dependencies manually." $Yellow
+                }
+            }
         }
     }
 }
