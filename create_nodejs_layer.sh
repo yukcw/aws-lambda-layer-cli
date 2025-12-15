@@ -325,7 +325,11 @@ npm init -y --silent
 printf "[3/5] Installing packages...\n"
 # Convert to array for safe expansion
 IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
+
+# Disable nounset for npm execution as some environment wrappers might trigger unbound variable errors
+set +u
 npm install --save --silent "${PKG_ARRAY[@]}"
+set -u
 
 # Count packages from command argument
 PACKAGE_COUNT=$(echo "$PACKAGES" | tr ',' '\n' | wc -l | tr -d ' ')

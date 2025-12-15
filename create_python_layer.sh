@@ -294,6 +294,7 @@ else
 fi
 
 # Activate virtual environment
+set +u
 if [ -f "$VENV_DIR/Scripts/activate" ]; then
     source "$VENV_DIR/Scripts/activate"
 elif [ -f "$VENV_DIR/bin/activate" ]; then
@@ -302,6 +303,7 @@ else
     printf "${RED}Error: Cannot find activation script in $VENV_DIR${NC}\n"
     exit 1
 fi
+set -u
 
 # Step 3: Install packages with versions
 printf "[3/7] Installing packages...\n"
@@ -405,7 +407,9 @@ else
 fi
 
 # Deactivate virtual environment
+set +u
 deactivate
+set -u
 
 # Step 6: Create zip file
 printf "[6/7] Creating zip file: $LAYER_NAME\n"
