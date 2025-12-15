@@ -129,10 +129,30 @@ function Test-Prerequisites {
     $hasPython = $false
     $hasNode = $false
 
-    try {
-        $zipVersion = & zip --version 2>$null
-        if ($LASTEXITCODE -eq 0) { $hasZip = $true; Write-ColorOutput "✓ zip found" $Green }
-    } catch { Write-ColorOutput "! zip not found" $Yellow }
+    # Check for zip in the appropriate environment
+    if ($hasWSL) {
+        try {
+            $wslZip = wsl zip --version 2>$null
+            if ($LASTEXITCODE -eq 0) { 
+                $hasZip = $true
+                Write-ColorOutput "✓ zip found in WSL" $Green 
+            } else {
+                Write-ColorOutput "! zip not found in WSL" $Yellow
+            }
+        } catch { Write-ColorOutput "! Failed to check zip in WSL" $Yellow }
+    } elseif ($hasGitBash) {
+        try {
+            # Check if zip is in Git Bash
+            $bashPath = $gitBashPath
+            $zipCheck = & $bashPath -c "zip --version" 2>$null
+            if ($LASTEXITCODE -eq 0) { 
+                $hasZip = $true
+                Write-ColorOutput "✓ zip found in Git Bash" $Green 
+            } else {
+                Write-ColorOutput "! zip not found in Git Bash" $Yellow
+            }
+        } catch { Write-ColorOutput "! Failed to check zip in Git Bash" $Yellow }
+    }
 
     try {
         $pythonVersion = & python --version 2>$null
@@ -158,7 +178,57 @@ function Test-Prerequisites {
 function Install-Dependencies {
     param([hashtable]$Prereqs)
 
-    if (-not $Prereqs.Zip -or -not $Prereqs.Python -or -not $Prereqs.Node -or -not $Prereqs.AwsCli) {
+    # Handle WSL zip installation
+    if ($Prereqs.WSL -and -not $Prereqs.Zip) {
+        $installZip = Read-Host "Zip not found in WSL. Try to install it? (Y/n)"
+        if ($installZip -match "^[Yy]|^$") {
+            Write-ColorOutput "Attempting to install zip in WSL (you may be asked for your sudo password)..." $Cyan
+            try {
+                # Try apt-get (Debian/Ubuntu)
+                Write-ColorOutput "Running: wsl sudo apt-get update && sudo apt-get install -y zip" $White
+                wsl sudo apt-get update
+                wsl sudo apt-get install -y zip
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-ColorOutput "✓ zip installed in WSL" $Green
+                    $Prereqs.Zip = $true
+                } else {
+                    Write-ColorOutput "✗ Failed to install zip automatically." $Red
+                    Write-ColorOutput "Please run 'sudo apt-get install zip' (or equivalent) inside WSL manually." $Yellow
+                }
+            } catch {
+                Write-ColorOutput "✗ Failed to execute WSL commands." $Red
+            }
+        }
+    }
+
+    # Handle Git Bash zip installation
+    if ($Prereqs.GitBash -and -not $Prereqs.Zip -and -not $Prereqs.WSL) {
+        $installZip = Read-Host "Zip not found in Git Bash. Try to install GnuWin32 Zip with winget? (Y/n)"
+        if ($installZip -match "^[Yy]|^$") {
+            Write-ColorOutput "Attempting to install GnuWin32 Zip..." $Cyan
+            try {
+                $wingetVersion = & winget --version 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    & winget install --id GnuWin32.Zip -e --source winget
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-ColorOutput "✓ GnuWin32 Zip installed" $Green
+                        Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
+                        $Prereqs.Zip = $true
+                    } else {
+                        Write-ColorOutput "✗ Failed to install GnuWin32 Zip." $Red
+                        Write-ColorOutput "Please install 'zip' manually (e.g. 'winget install GnuWin32.Zip')." $Yellow
+                    }
+                } else {
+                    Write-ColorOutput "winget not found. Please install 'zip' manually." $Yellow
+                }
+            } catch {
+                Write-ColorOutput "Error running winget." $Red
+            }
+        }
+    }
+
+    if (-not $Prereqs.Python -or -not $Prereqs.Node -or -not $Prereqs.AwsCli) {
         Write-ColorOutput "`nChecking for missing dependencies..." $Yellow
         
         # Check if winget is available
@@ -167,10 +237,6 @@ function Install-Dependencies {
             if ($LASTEXITCODE -eq 0) {
                 $installDeps = Read-Host "Missing dependencies detected. Try to install them with winget? (Y/n)"
                 if ($installDeps -match "^[Yy]|^$") {
-                    if (-not $Prereqs.Zip) {
-                        Write-ColorOutput "Installing 7zip (provides zip functionality)..." $Cyan
-                        & winget install --id 7zip.7zip -e --source winget
-                    }
                     if (-not $Prereqs.Python) {
                         Write-ColorOutput "Installing Python..." $Cyan
                         & winget install --id Python.Python.3.12 -e --source winget
