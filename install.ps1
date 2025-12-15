@@ -204,38 +204,53 @@ function Install-Dependencies {
 
     # Handle Git Bash zip installation
     if ($Prereqs.GitBash -and -not $Prereqs.Zip -and -not $Prereqs.WSL) {
-        $installZip = Read-Host "Zip not found in Git Bash. Try to install GnuWin32 Zip with winget? (Y/n)"
-        if ($installZip -match "^[Yy]|^$") {
-            Write-ColorOutput "Attempting to install GnuWin32 Zip..." $Cyan
-            try {
-                $wingetVersion = & winget --version 2>$null
-                if ($LASTEXITCODE -eq 0) {
-                    & winget install --id GnuWin32.Zip -e --source winget
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-ColorOutput "✓ GnuWin32 Zip installed" $Green
-                        
-                        # Add GnuWin32 to PATH
-                        $gnuWin32Path = "${env:ProgramFiles(x86)}\GnuWin32\bin"
-                        if (Test-Path $gnuWin32Path) {
-                            $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-                            if ($currentPath -notlike "*$gnuWin32Path*") {
-                                $newPath = "$currentPath;$gnuWin32Path"
-                                [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-                                Write-ColorOutput "✓ Added $gnuWin32Path to user PATH" $Green
-                            }
-                        }
+        # Check if GnuWin32 is already installed but not in PATH
+        $gnuWin32Path = "${env:ProgramFiles(x86)}\GnuWin32\bin"
+        if (Test-Path $gnuWin32Path) {
+            $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+            if ($currentPath -notlike "*$gnuWin32Path*") {
+                $newPath = "$currentPath;$gnuWin32Path"
+                [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+                Write-ColorOutput "✓ Found GnuWin32 Zip at $gnuWin32Path" $Green
+                Write-ColorOutput "✓ Added GnuWin32 to user PATH" $Green
+                Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
+                $Prereqs.Zip = $true
+            }
+        }
 
-                        Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
-                        $Prereqs.Zip = $true
+        if (-not $Prereqs.Zip) {
+            $installZip = Read-Host "Zip not found in Git Bash. Try to install GnuWin32 Zip with winget? (Y/n)"
+            if ($installZip -match "^[Yy]|^$") {
+                Write-ColorOutput "Attempting to install GnuWin32 Zip..." $Cyan
+                try {
+                    $wingetVersion = & winget --version 2>$null
+                    if ($LASTEXITCODE -eq 0) {
+                        & winget install --id GnuWin32.Zip -e --source winget
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-ColorOutput "✓ GnuWin32 Zip installed" $Green
+                            
+                            # Add GnuWin32 to PATH
+                            if (Test-Path $gnuWin32Path) {
+                                $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+                                if ($currentPath -notlike "*$gnuWin32Path*") {
+                                    $newPath = "$currentPath;$gnuWin32Path"
+                                    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+                                    Write-ColorOutput "✓ Added $gnuWin32Path to user PATH" $Green
+                                }
+                            }
+
+                            Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
+                            $Prereqs.Zip = $true
+                        } else {
+                            Write-ColorOutput "✗ Failed to install GnuWin32 Zip." $Red
+                            Write-ColorOutput "Please install 'zip' manually (e.g. 'winget install GnuWin32.Zip')." $Yellow
+                        }
                     } else {
-                        Write-ColorOutput "✗ Failed to install GnuWin32 Zip." $Red
-                        Write-ColorOutput "Please install 'zip' manually (e.g. 'winget install GnuWin32.Zip')." $Yellow
+                        Write-ColorOutput "winget not found. Please install 'zip' manually." $Yellow
                     }
-                } else {
-                    Write-ColorOutput "winget not found. Please install 'zip' manually." $Yellow
+                } catch {
+                    Write-ColorOutput "Error running winget." $Red
                 }
-            } catch {
-                Write-ColorOutput "Error running winget." $Red
             }
         }
     }
