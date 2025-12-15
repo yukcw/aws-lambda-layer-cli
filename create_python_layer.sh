@@ -18,6 +18,7 @@ PACKAGES=""
 LAYER_NAME=""
 PYTHON_VERSION="3.14"  # Default to Python 3.14
 PYTHON_VERSION_SPECIFIED=false
+VENV_DIR="python"
 USE_UV=true
 ORIGINAL_DIR=$(pwd)
 
@@ -278,20 +279,28 @@ fi
 
 if [ "$USE_UV" = true ]; then
     printf "  Using UV to create venv...\n"
-    if ! uv venv --python "$TARGET_PYTHON" python; then
+    if ! uv venv --python "$TARGET_PYTHON" "$VENV_DIR"; then
          printf "${RED}Error: Failed to create venv with uv${NC}\n"
          exit 1
     fi
-    source python/bin/activate
 else
     printf "  Using venv module...\n"
     if command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
-        "$TARGET_PYTHON" -m venv python
+        "$TARGET_PYTHON" -m venv "$VENV_DIR"
     else
         printf "${RED}Error: $TARGET_PYTHON not found${NC}\n"
         exit 1
     fi
-    source python/bin/activate
+fi
+
+# Activate virtual environment
+if [ -f "$VENV_DIR/Scripts/activate" ]; then
+    source "$VENV_DIR/Scripts/activate"
+elif [ -f "$VENV_DIR/bin/activate" ]; then
+    source "$VENV_DIR/bin/activate"
+else
+    printf "${RED}Error: Cannot find activation script in $VENV_DIR${NC}\n"
+    exit 1
 fi
 
 # Step 3: Install packages with versions
