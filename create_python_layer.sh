@@ -90,7 +90,7 @@ trap cleanup EXIT
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -i|--packages)
-            if [[ -n "$2" && "$2" != -* ]]; then
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 PACKAGES="$2"
                 shift 2
             else
@@ -104,7 +104,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -n|--name)
-            if [[ -n "$2" && "$2" != -* ]]; then
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 LAYER_NAME="$2"
                 shift 2
             else
@@ -118,7 +118,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --python-version)
-            if [[ -n "$2" && "$2" != -* ]]; then
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 PYTHON_VERSION="$2"
                 validate_python_version "$PYTHON_VERSION"
                 shift 2

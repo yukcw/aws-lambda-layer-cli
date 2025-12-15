@@ -264,7 +264,7 @@ handle_zip() {
     local packages=""
     
     # Parse runtime flag
-    case "$1" in
+    case "${1:-}" in
         --nodejs|--node|-n)
             runtime="nodejs"
             shift
@@ -290,7 +290,7 @@ handle_zip() {
             esac
             ;;
         --runtime)
-            if [[ -n "$2" && "$2" != -* ]]; then
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 runtime="$2"
                 shift 2
                 case "$runtime" in
@@ -317,7 +317,7 @@ handle_zip() {
     esac
     
     # Get packages as first positional argument
-    if [[ -n "$1" && "$1" != -* ]]; then
+    if [[ -n "${1:-}" && "${1:-}" != -* ]]; then
         packages="$1"
         shift
     else
@@ -383,7 +383,7 @@ handle_publish() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --description)
-                if [[ -n "$2" && "$2" != -* ]]; then
+                if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                     description="$2"
                     shift 2
                 else
@@ -396,7 +396,7 @@ handle_publish() {
                 shift
                 ;;
             --name)
-                if [[ -n "$2" && "$2" != -* ]]; then
+                if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                     layer_name="$2"
                     shift 2
                 else
@@ -409,7 +409,7 @@ handle_publish() {
                 shift
                 ;;
             --profile)
-                if [[ -n "$2" && "$2" != -* ]]; then
+                if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                     profile="$2"
                     shift 2
                 else
@@ -422,7 +422,7 @@ handle_publish() {
                 shift
                 ;;
             --region)
-                if [[ -n "$2" && "$2" != -* ]]; then
+                if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                     region="$2"
                     shift 2
                 else
@@ -443,7 +443,7 @@ handle_publish() {
     
     # Parse runtime flag from remaining arguments
     set -- "${new_args[@]}"
-    case "$1" in
+    case "${1:-}" in
         --nodejs|--node|-n)
             runtime="nodejs"
             shift
@@ -469,7 +469,7 @@ handle_publish() {
             esac
             ;;
         --runtime)
-            if [[ -n "$2" && "$2" != -* ]]; then
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 runtime="$2"
                 shift 2
                 case "$runtime" in
@@ -496,7 +496,7 @@ handle_publish() {
     esac
     
     # Get packages as first positional argument
-    if [[ -n "$1" && "$1" != -* ]]; then
+    if [[ -n "${1:-}" && "${1:-}" != -* ]]; then
         packages="$1"
         shift
     else
