@@ -655,6 +655,19 @@ handle_publish() {
     printf "  Compatible runtimes: ${GREEN}$compatible_runtimes${NC}\n"
     printf "  Zip file: ${GREEN}$zip_file${NC}\n\n"
     
+    # Confirm publish
+    read -p "Do you want to publish this layer? [Y/n]: " confirm_publish
+    confirm_publish=${confirm_publish:-Y}
+    
+    case "$confirm_publish" in
+        [Yy]|[Yy][Ee][Ss])
+            ;;
+        *)
+            printf "${YELLOW}Publishing cancelled.${NC}\n"
+            exit 0
+            ;;
+    esac
+    
     # Build AWS CLI options for publish
     local publish_aws_opts=()
     if [ -n "$profile" ]; then

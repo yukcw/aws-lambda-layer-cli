@@ -70,7 +70,7 @@ This will:
 ### Requirements
 
 - **Linux/macOS**: Bash shell
-- **Windows**: Windows Subsystem for Linux (WSL) or Git Bash
+- **Windows**: Windows Subsystem for Linux (WSL) (Git Bash support TBD)
 - **AWS CLI**: Required for `publish` command
 - **Node.js**: Required for Node.js layer creation
 - **Python**: Required for Python layer creation (uv recommended)
