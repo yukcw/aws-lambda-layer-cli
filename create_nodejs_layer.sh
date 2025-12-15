@@ -9,8 +9,8 @@
 set -e  # Exit on error
 set -u  # Treat unset variables as errors
 
-# Generate unique temporary directory (removed -XXXXXX)
-TEMP_DIR=$(mktemp -d -t nodejs-layer)
+# Generate unique temporary directory
+TEMP_DIR=$(mktemp -d)
 WORK_DIR="$TEMP_DIR/layer-build"
 NODE_DIR="$WORK_DIR/nodejs"
 

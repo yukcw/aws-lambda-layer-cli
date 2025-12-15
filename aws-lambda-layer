@@ -18,8 +18,20 @@ NC='\033[0m' # No Color
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/usr/local/lib/aws-lambda-layer"
-NODE_SCRIPT="$INSTALL_DIR/create_nodejs_layer.sh"
-PYTHON_SCRIPT="$INSTALL_DIR/create_python_layer.sh"
+
+# Determine script locations (prefer relative to script, fallback to global install)
+if [ -f "$SCRIPT_DIR/create_nodejs_layer.sh" ]; then
+    NODE_SCRIPT="$SCRIPT_DIR/create_nodejs_layer.sh"
+else
+    NODE_SCRIPT="$INSTALL_DIR/create_nodejs_layer.sh"
+fi
+
+if [ -f "$SCRIPT_DIR/create_python_layer.sh" ]; then
+    PYTHON_SCRIPT="$SCRIPT_DIR/create_python_layer.sh"
+else
+    PYTHON_SCRIPT="$INSTALL_DIR/create_python_layer.sh"
+fi
+
 BIN_DIR="/usr/local/bin"
 COMPLETION_DIR="/etc/bash_completion.d"
 
