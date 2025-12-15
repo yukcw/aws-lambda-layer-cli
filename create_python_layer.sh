@@ -260,9 +260,9 @@ TARGET_PYTHON="python${PYTHON_VERSION}"
 if ! command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
     if [ "$PYTHON_VERSION_SPECIFIED" = false ]; then
         printf "${YELLOW}Warning: Default $TARGET_PYTHON not found. Checking for fallback...${NC}\n"
-        if command -v python3 >/dev/null 2>&1; then
+        if command -v python3 >/dev/null 2>&1 && python3 -V >/dev/null 2>&1; then
             TARGET_PYTHON="python3"
-        elif command -v python >/dev/null 2>&1; then
+        elif command -v python >/dev/null 2>&1 && python -V >/dev/null 2>&1; then
             TARGET_PYTHON="python"
         else
              printf "${RED}Error: No python interpreter found${NC}\n"
