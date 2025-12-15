@@ -157,50 +157,49 @@ function Install-Tool {
     # Download individual files
     Write-ColorOutput "Downloading files..." $Yellow
 
-        $files = @(
-            "aws-lambda-layer",
-            "create_nodejs_layer.sh",
-            "create_python_layer.sh",
-            "install.sh",
-            "uninstall.sh",
-            "uninstall.ps1"
-        )
+    $files = @(
+        "aws-lambda-layer",
+        "create_nodejs_layer.sh",
+        "create_python_layer.sh",
+        "install.sh",
+        "uninstall.sh",
+        "uninstall.ps1"
+    )
 
-        $baseUrl = "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main"
+    $baseUrl = "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main"
 
-        foreach ($file in $files) {
-            $url = "$baseUrl/$file"
-            $outputPath = Join-Path $InstallDir $file
+    foreach ($file in $files) {
+        $url = "$baseUrl/$file"
+        $outputPath = Join-Path $InstallDir $file
 
-            try {
-                Invoke-WebRequest -Uri $url -OutFile $outputPath
-                Write-ColorOutput "✓ Downloaded $file" $Green
-            } catch {
-                Write-ColorOutput "✗ Failed to download $file" $Red
-                Write-ColorOutput "Error: $($_.Exception.Message)" $Red
-                return $false
-            }
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outputPath
+            Write-ColorOutput "✓ Downloaded $file" $Green
+        } catch {
+            Write-ColorOutput "✗ Failed to download $file" $Red
+            Write-ColorOutput "Error: $($_.Exception.Message)" $Red
+            return $false
         }
+    }
 
-        # Download completion files
-        $completionDir = Join-Path $InstallDir "completion"
-        New-Item -ItemType Directory -Path $completionDir -Force | Out-Null
+    # Download completion files
+    $completionDir = Join-Path $InstallDir "completion"
+    New-Item -ItemType Directory -Path $completionDir -Force | Out-Null
 
-        $completionFiles = @(
-            "completion/aws-lambda-layer-completion.bash",
-            "completion/aws-lambda-layer-completion.zsh"
-        )
+    $completionFiles = @(
+        "completion/aws-lambda-layer-completion.bash",
+        "completion/aws-lambda-layer-completion.zsh"
+    )
 
-        foreach ($file in $completionFiles) {
-            $url = "$baseUrl/$file"
-            $outputPath = Join-Path $InstallDir $file
+    foreach ($file in $completionFiles) {
+        $url = "$baseUrl/$file"
+        $outputPath = Join-Path $InstallDir $file
 
-            try {
-                Invoke-WebRequest -Uri $url -OutFile $outputPath
-                Write-ColorOutput "✓ Downloaded $file" $Green
-            } catch {
-                Write-ColorOutput "! Failed to download $file (optional)" $Yellow
-            }
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outputPath
+            Write-ColorOutput "✓ Downloaded $file" $Green
+        } catch {
+            Write-ColorOutput "! Failed to download $file (optional)" $Yellow
         }
     }
 
