@@ -70,7 +70,7 @@ function Test-Prerequisites {
 
     # Check for WSL
     try {
-        $wslVersion = wsl --version 2>$null
+        $wslInstallStatus = wsl --status 2>$null
         if ($LASTEXITCODE -eq 0) {
             $hasWSL = $true
             Write-ColorOutput "✓ WSL found" $Green
