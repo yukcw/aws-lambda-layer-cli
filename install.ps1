@@ -80,24 +80,35 @@ function Test-Prerequisites {
     }
 
     # Check for Git Bash
-    $gitBashPath = "$env:ProgramFiles\Git\bin\bash.exe"
-    if (Test-Path $gitBashPath) {
-        $hasGitBash = $true
-        Write-ColorOutput "✓ Git Bash found at $gitBashPath" $Green
-    } else {
-        # Check common Git installation paths
-        $gitPaths = @(
-            "${env:ProgramFiles(x86)}\Git\bin\bash.exe",
-            "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
-        )
-        foreach ($path in $gitPaths) {
-            if (Test-Path $path) {
-                $hasGitBash = $true
+    $gitBashPath = $null
+    $possiblePaths = @(
+        "$env:ProgramFiles\Git\bin\bash.exe",
+        "${env:ProgramFiles(x86)}\Git\bin\bash.exe",
+        "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+    )
+
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $gitBashPath = $path
+            break
+        }
+    }
+
+    # If not found in standard locations, check PATH
+    if (-not $gitBashPath) {
+        $bashCmd = Get-Command bash -ErrorAction SilentlyContinue
+        if ($bashCmd) {
+            $path = $bashCmd.Source
+            # Filter out WSL bash (usually in System32)
+            if ($path -notlike "*\System32\bash.exe") {
                 $gitBashPath = $path
-                Write-ColorOutput "✓ Git Bash found at $path" $Green
-                break
             }
         }
+    }
+
+    if ($gitBashPath) {
+        $hasGitBash = $true
+        Write-ColorOutput "✓ Git Bash found at $gitBashPath" $Green
     }
 
     if (-not $hasWSL -and -not $hasGitBash) {
