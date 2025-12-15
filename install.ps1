@@ -175,8 +175,8 @@ function Test-Prerequisites {
                     $drive = $gnuWin32Path.Substring(0,1).ToLower()
                     $pathPart = $gnuWin32Path.Substring(2).Replace("\", "/")
                     $bashZipPath = "/$drive$pathPart/zip"
-                    # Escape spaces
-                    $bashZipPath = $bashZipPath.Replace(" ", "\ ")
+                    # Escape spaces and parentheses
+                    $bashZipPath = $bashZipPath.Replace(" ", "\ ").Replace("(", "\(").Replace(")", "\)")
                     
                     & $bashPath -c "$bashZipPath --version" 2>$null | Out-Null
                     if ($LASTEXITCODE -eq 0) {
