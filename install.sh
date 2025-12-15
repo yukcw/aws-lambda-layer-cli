@@ -15,8 +15,12 @@ printf "${BLUE}Installing AWS Lambda Layer CLI Tool...${NC}\n"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
-    printf "${YELLOW}Warning: Not running as root. Using sudo for installation.${NC}\n"
-    SUDO="sudo"
+    if command -v sudo &> /dev/null; then
+        printf "${YELLOW}Warning: Not running as root. Using sudo for installation.${NC}\n"
+        SUDO="sudo"
+    else
+        SUDO=""
+    fi
 else
     SUDO=""
 fi

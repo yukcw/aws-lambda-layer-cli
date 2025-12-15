@@ -125,28 +125,32 @@ function Test-Prerequisites {
     }
 
     # Check for other dependencies
-    $hasZip = $false
+    $hasZipWSL = $false
+    $hasZipGitBash = $false
     $hasPython = $false
     $hasNode = $false
 
-    # Check for zip in the appropriate environment
+    # Check for zip in WSL
     if ($hasWSL) {
         try {
             $wslZip = wsl zip --version 2>$null
             if ($LASTEXITCODE -eq 0) { 
-                $hasZip = $true
+                $hasZipWSL = $true
                 Write-ColorOutput "✓ zip found in WSL" $Green 
             } else {
                 Write-ColorOutput "! zip not found in WSL" $Yellow
             }
         } catch { Write-ColorOutput "! Failed to check zip in WSL" $Yellow }
-    } elseif ($hasGitBash) {
+    }
+
+    # Check for zip in Git Bash
+    if ($hasGitBash) {
         try {
             # Check if zip is in Git Bash
             $bashPath = $gitBashPath
             $zipCheck = & $bashPath -c "zip --version" 2>$null
             if ($LASTEXITCODE -eq 0) { 
-                $hasZip = $true
+                $hasZipGitBash = $true
                 Write-ColorOutput "✓ zip found in Git Bash" $Green 
             } else {
                 Write-ColorOutput "! zip not found in Git Bash" $Yellow
@@ -169,7 +173,8 @@ function Test-Prerequisites {
         GitBash = $hasGitBash
         GitBashPath = $gitBashPath
         AwsCli = $hasAwsCli
-        Zip = $hasZip
+        ZipWSL = $hasZipWSL
+        ZipGitBash = $hasZipGitBash
         Python = $hasPython
         Node = $hasNode
     }
@@ -179,7 +184,7 @@ function Install-Dependencies {
     param([hashtable]$Prereqs)
 
     # Handle WSL zip installation
-    if ($Prereqs.WSL -and -not $Prereqs.Zip) {
+    if ($Prereqs.WSL -and -not $Prereqs.ZipWSL) {
         $installZip = Read-Host "Zip not found in WSL. Try to install it? (Y/n)"
         if ($installZip -match "^[Yy]|^$") {
             Write-ColorOutput "Attempting to install zip in WSL (you may be asked for your sudo password)..." $Cyan
@@ -191,7 +196,7 @@ function Install-Dependencies {
                 
                 if ($LASTEXITCODE -eq 0) {
                     Write-ColorOutput "✓ zip installed in WSL" $Green
-                    $Prereqs.Zip = $true
+                    $Prereqs.ZipWSL = $true
                 } else {
                     Write-ColorOutput "✗ Failed to install zip automatically." $Red
                     Write-ColorOutput "Please run 'sudo apt-get install zip' (or equivalent) inside WSL manually." $Yellow
@@ -203,7 +208,7 @@ function Install-Dependencies {
     }
 
     # Handle Git Bash zip installation
-    if ($Prereqs.GitBash -and -not $Prereqs.Zip -and -not $Prereqs.WSL) {
+    if ($Prereqs.GitBash -and -not $Prereqs.ZipGitBash) {
         # Check if GnuWin32 is already installed but not in PATH
         $gnuWin32Path = "${env:ProgramFiles(x86)}\GnuWin32\bin"
         if (Test-Path $gnuWin32Path) {
@@ -214,11 +219,11 @@ function Install-Dependencies {
                 Write-ColorOutput "✓ Found GnuWin32 Zip at $gnuWin32Path" $Green
                 Write-ColorOutput "✓ Added GnuWin32 to user PATH" $Green
                 Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
-                $Prereqs.Zip = $true
+                $Prereqs.ZipGitBash = $true
             }
         }
 
-        if (-not $Prereqs.Zip) {
+        if (-not $Prereqs.ZipGitBash) {
             $installZip = Read-Host "Zip not found in Git Bash. Try to install GnuWin32 Zip with winget? (Y/n)"
             if ($installZip -match "^[Yy]|^$") {
                 Write-ColorOutput "Attempting to install GnuWin32 Zip..." $Cyan
@@ -240,7 +245,7 @@ function Install-Dependencies {
                             }
 
                             Write-ColorOutput "  Note: You may need to restart your terminal for PATH changes to take effect." $Yellow
-                            $Prereqs.Zip = $true
+                            $Prereqs.ZipGitBash = $true
                         } else {
                             Write-ColorOutput "✗ Failed to install GnuWin32 Zip." $Red
                             Write-ColorOutput "Please install 'zip' manually (e.g. 'winget install GnuWin32.Zip')." $Yellow
