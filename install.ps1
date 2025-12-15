@@ -142,7 +142,7 @@ function Test-Prerequisites {
     $hasZipGitBash = $false
     $hasPythonWSL = $false
     $hasVenvWSL = $false
-    $hasEnsurePipWSL = $false
+    $hasPipWSL = $false
     $hasPythonGitBash = $false
     $hasNodeWSL = $false
     $hasNodeGitBash = $false
@@ -182,15 +182,15 @@ function Test-Prerequisites {
         } catch { Write-ColorOutput "! Failed to check python venv in WSL" $Yellow }
 
         try {
-            # Check for ensurepip
-            $wslEnsurePip = wsl bash -c "python3 -c 'import ensurepip' 2>/dev/null || python -c 'import ensurepip' 2>/dev/null" 2>$null
+            # Check for pip
+            $wslPip = wsl bash -c "python3 -m pip --version 2>/dev/null || python -m pip --version 2>/dev/null" 2>$null
             if ($LASTEXITCODE -eq 0) {
-                $hasEnsurePipWSL = $true
-                Write-ColorOutput "✓ python ensurepip module found in WSL" $Green
+                $hasPipWSL = $true
+                Write-ColorOutput "✓ python pip module found in WSL" $Green
             } else {
-                Write-ColorOutput "! python ensurepip module not found in WSL" $Yellow
+                Write-ColorOutput "! python pip module not found in WSL" $Yellow
             }
-        } catch { Write-ColorOutput "! Failed to check python ensurepip in WSL" $Yellow }
+        } catch { Write-ColorOutput "! Failed to check python pip in WSL" $Yellow }
 
         try {
             $wslNode = wsl node --version 2>$null
@@ -232,7 +232,7 @@ function Test-Prerequisites {
         ZipGitBash = $hasZipGitBash
         PythonWSL = $hasPythonWSL
         VenvWSL = $hasVenvWSL
-        EnsurePipWSL = $hasEnsurePipWSL
+        PipWSL = $hasPipWSL
         PythonGitBash = $hasPythonGitBash
         NodeWSL = $hasNodeWSL
         NodeGitBash = $hasNodeGitBash
@@ -319,12 +319,12 @@ function Install-Dependencies {
         }
     }
 
-    if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.EnsurePipWSL -or -not $Prereqs.NodeWSL -or -not $Prereqs.PythonGitBash -or -not $Prereqs.NodeGitBash -or -not $Prereqs.AwsCli) {
+    if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.PipWSL -or -not $Prereqs.NodeWSL -or -not $Prereqs.PythonGitBash -or -not $Prereqs.NodeGitBash -or -not $Prereqs.AwsCli) {
         Write-ColorOutput "`nChecking for missing dependencies..." $Yellow
         
         # Handle WSL dependencies
         if ($Prereqs.WSL) {
-            if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.EnsurePipWSL -or -not $Prereqs.NodeWSL) {
+            if (-not $Prereqs.PythonWSL -or -not $Prereqs.VenvWSL -or -not $Prereqs.PipWSL -or -not $Prereqs.NodeWSL) {
                 $installWslDeps = Read-Host "Missing dependencies in WSL. Try to install them? (Y/n)"
                 if ($installWslDeps -match "^[Yy]|^$") {
                     Write-ColorOutput "Attempting to install dependencies in WSL..." $Cyan
@@ -335,9 +335,9 @@ function Install-Dependencies {
                         if (-not $Prereqs.PythonWSL) {
                             Write-ColorOutput "Installing Python in WSL..." $Cyan
                             wsl sudo apt-get install -y python3 python3-pip python3-venv
-                        } elseif (-not $Prereqs.VenvWSL -or -not $Prereqs.EnsurePipWSL) {
-                            Write-ColorOutput "Installing Python venv (ensurepip) in WSL..." $Cyan
-                            wsl sudo apt-get install -y python3-venv
+                        } elseif (-not $Prereqs.VenvWSL -or -not $Prereqs.PipWSL) {
+                            Write-ColorOutput "Installing Python venv/pip in WSL..." $Cyan
+                            wsl sudo apt-get install -y python3-venv python3-pip
                         }
                         if (-not $Prereqs.NodeWSL) {
                             Write-ColorOutput "Installing Node.js in WSL..." $Cyan
