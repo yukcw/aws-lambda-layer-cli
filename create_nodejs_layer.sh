@@ -192,7 +192,16 @@ if [ -z "$PACKAGES" ]; then
     printf "Example: ./create_nodejs_layer.sh -i express@4.18.2,axios\n"
     exit 1
 fi
+# Check dependencies
+if ! command -v zip &> /dev/null; then
+    printf "${RED}Error: 'zip' command is not installed${NC}\n"
+    exit 1
+fi
 
+if ! command -v npm &> /dev/null; then
+    printf "${RED}Error: 'npm' command is not installed${NC}\n"
+    exit 1
+fi
 # Function to get Node.js version securely
 get_node_version() {
     local version=""

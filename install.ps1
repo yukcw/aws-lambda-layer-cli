@@ -124,11 +124,73 @@ function Test-Prerequisites {
         Write-ColorOutput "! AWS CLI not found (optional for zip command)" $Yellow
     }
 
+    # Check for other dependencies
+    $hasZip = $false
+    $hasPython = $false
+    $hasNode = $false
+
+    try {
+        $zipVersion = & zip --version 2>$null
+        if ($LASTEXITCODE -eq 0) { $hasZip = $true; Write-ColorOutput "✓ zip found" $Green }
+    } catch { Write-ColorOutput "! zip not found" $Yellow }
+
+    try {
+        $pythonVersion = & python --version 2>$null
+        if ($LASTEXITCODE -eq 0) { $hasPython = $true; Write-ColorOutput "✓ python found" $Green }
+    } catch { Write-ColorOutput "! python not found" $Yellow }
+
+    try {
+        $nodeVersion = & node --version 2>$null
+        if ($LASTEXITCODE -eq 0) { $hasNode = $true; Write-ColorOutput "✓ node found" $Green }
+    } catch { Write-ColorOutput "! node not found" $Yellow }
+
     return @{
         WSL = $hasWSL
         GitBash = $hasGitBash
         GitBashPath = $gitBashPath
         AwsCli = $hasAwsCli
+        Zip = $hasZip
+        Python = $hasPython
+        Node = $hasNode
+    }
+}
+
+function Install-Dependencies {
+    param([hashtable]$Prereqs)
+
+    if (-not $Prereqs.Zip -or -not $Prereqs.Python -or -not $Prereqs.Node -or -not $Prereqs.AwsCli) {
+        Write-ColorOutput "`nChecking for missing dependencies..." $Yellow
+        
+        # Check if winget is available
+        try {
+            $wingetVersion = & winget --version 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                $installDeps = Read-Host "Missing dependencies detected. Try to install them with winget? (Y/n)"
+                if ($installDeps -match "^[Yy]|^$") {
+                    if (-not $Prereqs.Zip) {
+                        Write-ColorOutput "Installing 7zip (provides zip functionality)..." $Cyan
+                        & winget install --id 7zip.7zip -e --source winget
+                    }
+                    if (-not $Prereqs.Python) {
+                        Write-ColorOutput "Installing Python..." $Cyan
+                        & winget install --id Python.Python.3.12 -e --source winget
+                    }
+                    if (-not $Prereqs.Node) {
+                        Write-ColorOutput "Installing Node.js..." $Cyan
+                        & winget install --id OpenJS.NodeJS.LTS -e --source winget
+                    }
+                    if (-not $Prereqs.AwsCli) {
+                        Write-ColorOutput "Installing AWS CLI..." $Cyan
+                        & winget install --id Amazon.AWSCLI -e --source winget
+                    }
+                    Write-ColorOutput "Dependencies installed. You may need to restart your terminal." $Green
+                }
+            } else {
+                Write-ColorOutput "winget not found. Please install missing dependencies manually." $Yellow
+            }
+        } catch {
+            Write-ColorOutput "winget not found. Please install missing dependencies manually." $Yellow
+        }
     }
 }
 
@@ -349,6 +411,9 @@ function Main {
 
     # Check prerequisites
     $prereqs = Test-Prerequisites
+
+    # Install dependencies if needed
+    Install-Dependencies -Prereqs $prereqs
 
     # Install the tool
     $installSuccess = Install-Tool -Prereqs $prereqs

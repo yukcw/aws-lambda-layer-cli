@@ -230,6 +230,34 @@ get_compatible_runtimes() {
     esac
 }
 
+# Check dependencies
+check_dependencies() {
+    local runtime="$1"
+    
+    # Check for zip
+    if ! command -v zip &> /dev/null; then
+        printf "${RED}Error: 'zip' command is not installed${NC}\n"
+        printf "Please install zip first.\n"
+        return 1
+    fi
+    
+    # Check runtime
+    if [ "$runtime" = "nodejs" ]; then
+        if ! command -v node &> /dev/null; then
+            printf "${RED}Error: 'node' command is not installed${NC}\n"
+            printf "Please install Node.js first.\n"
+            return 1
+        fi
+    elif [ "$runtime" = "python" ]; then
+        if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
+            printf "${RED}Error: 'python' command is not installed${NC}\n"
+            printf "Please install Python first.\n"
+            return 1
+        fi
+    fi
+    return 0
+}
+
 # Zip command handler - creates local zip files
 handle_zip() {
     local runtime=""
@@ -296,6 +324,11 @@ handle_zip() {
         printf "${RED}Error: Missing packages argument${NC}\n"
         printf "Usage: aws-lambda-layer zip --nodejs <packages> [options]\n"
         printf "Example: aws-lambda-layer zip --nodejs express,axios\n"
+        exit 1
+    fi
+    
+    # Check dependencies
+    if ! check_dependencies "$runtime"; then
         exit 1
     fi
     
@@ -470,6 +503,11 @@ handle_publish() {
         printf "${RED}Error: Missing packages argument${NC}\n"
         printf "Usage: aws-lambda-layer publish --nodejs <packages> [options]\n"
         printf "Example: aws-lambda-layer publish --nodejs express,axios --description \"My layer\"\n"
+        exit 1
+    fi
+    
+    # Check dependencies
+    if ! check_dependencies "$runtime"; then
         exit 1
     fi
     

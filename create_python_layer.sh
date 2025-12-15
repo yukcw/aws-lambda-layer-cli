@@ -193,6 +193,17 @@ if [ "$USE_UV" = true ]; then
     fi
 fi
 
+# Check dependencies
+if ! command -v zip &> /dev/null; then
+    printf "${RED}Error: 'zip' command is not installed${NC}\n"
+    exit 1
+fi
+
+if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
+    printf "${RED}Error: 'python' command is not installed${NC}\n"
+    exit 1
+fi
+
 # Sanitize packages input using whitelist
 SANITIZED_PACKAGES=""
 IFS=',' read -ra PACKAGE_ARRAY <<< "$PACKAGES"
