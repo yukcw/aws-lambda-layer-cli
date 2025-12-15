@@ -157,13 +157,51 @@ function Test-Prerequisites {
     # Check for zip in Git Bash
     if ($hasGitBash) {
         try {
-            # Check if zip is in Git Bash
             $bashPath = $gitBashPath
-            $zipCheck = & $bashPath -c "zip --version" 2>$null
+            
+            # 1. Try standard zip command
+            & $bashPath -c "zip --version" 2>$null | Out-Null
             if ($LASTEXITCODE -eq 0) { 
                 $hasZipGitBash = $true
                 Write-ColorOutput "✓ zip found in Git Bash" $Green 
             } else {
+                # 2. Try GnuWin32 path specifically
+                $gnuWin32Path = "${env:ProgramFiles(x86)}\GnuWin32\bin"
+                $zipExe = Join-Path $gnuWin32Path "zip.exe"
+                
+                if (Test-Path $zipExe) {
+                    # Verify it works via bash using full path
+                    # Convert to Git Bash path format: C:\Program Files (x86)... -> /c/Program Files (x86)...
+                    $drive = $gnuWin32Path.Substring(0,1).ToLower()
+                    $pathPart = $gnuWin32Path.Substring(2).Replace("\", "/")
+                    $bashZipPath = "/$drive$pathPart/zip"
+                    # Escape spaces
+                    $bashZipPath = $bashZipPath.Replace(" ", "\ ")
+                    
+                    & $bashPath -c "$bashZipPath --version" 2>$null | Out-Null
+                    if ($LASTEXITCODE -eq 0) {
+                        $hasZipGitBash = $true
+                        Write-ColorOutput "✓ zip found at $zipExe" $Green
+                        
+                        # Fix PATHs
+                        # 1. Current Session
+                        if ("$env:Path" -notlike "*$gnuWin32Path*") {
+                            Write-ColorOutput "  Adding GnuWin32 to current session PATH" $Yellow
+                            $env:Path = "$env:Path;$gnuWin32Path"
+                        }
+                        
+                        # 2. Permanent User PATH
+                        $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+                        if ($currentPath -notlike "*$gnuWin32Path*") {
+                            $newPath = "$currentPath;$gnuWin32Path"
+                            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+                            Write-ColorOutput "  Added GnuWin32 to permanent User PATH" $Green
+                        }
+                    }
+                }
+            }
+            
+            if (-not $hasZipGitBash) {
                 Write-ColorOutput "! zip not found in Git Bash" $Yellow
             }
         } catch { Write-ColorOutput "! Failed to check zip in Git Bash" $Yellow }
