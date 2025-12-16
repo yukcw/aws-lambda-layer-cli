@@ -70,10 +70,13 @@ This will:
 ### Requirements
 
 - **Linux/macOS**: Bash shell
-- **Windows**: Windows Subsystem for Linux (WSL) (Git Bash support TBD)
+- **Windows**: Windows Subsystem for Linux (WSL) or Git Bash or Cygwin
 - **AWS CLI**: Required for `publish` command
 - **Node.js**: Required for Node.js layer creation
 - **Python**: Required for Python layer creation (uv recommended)
+- **zip**: Required for creating zip archives
+
+**Note**: If using WSL, ensure that AWS CLI, Node.js, Python, and zip are installed within WSL for proper functionality.
 
 ## Uninstallation
 
@@ -276,6 +279,8 @@ Before using the `publish` command, ensure you have:
 3. **Region Configuration**: Either:
    - Set default region: `aws configure set region us-east-1`
    - Or use `--region` flag when publishing
+
+4. **zip command installed**: Ensure the `zip` command is available on your system.
 
 ### Confirmation Prompt
 

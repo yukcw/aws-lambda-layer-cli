@@ -94,7 +94,7 @@ show_help() {
 
 # Show version
 show_version() {
-    echo "aws-lambda-layer v1.2.0"
+    echo "aws-lambda-layer v1.3.0"
     echo "AWS Lambda Layer Creator and Publisher CLI Tool"
 }
 
