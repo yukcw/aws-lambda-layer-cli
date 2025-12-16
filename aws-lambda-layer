@@ -687,14 +687,14 @@ handle_publish() {
     fi
     printf "  --layer-name \"$layer_name\"\n"
     printf "  --description \"$final_description\"\n"
-    printf "  --zip-file \"fileb://$current_dir/$output_dir/$zip_file\"\n"
+    printf "  --zip-file \"fileb://$(convert_path "$current_dir/$output_dir/$zip_file")\"\n"
     printf "  --compatible-runtimes \"$compatible_runtimes\"\n\n"
     
     # Run AWS CLI command and capture output and exit code
     aws ${publish_aws_opts[@]+"${publish_aws_opts[@]}"} lambda publish-layer-version \
         --layer-name "$layer_name" \
         --description "$final_description" \
-        --zip-file "fileb://$current_dir/$output_dir/$zip_file" \
+        --zip-file "fileb://$(convert_path "$current_dir/$output_dir/$zip_file")" \
         --compatible-runtimes "$compatible_runtimes" \
         --query '[LayerVersionArn, Version, Description]' \
         --output table 2>&1 | tee publish.log
@@ -735,6 +735,34 @@ handle_publish() {
     
     printf "\n${GREEN}✅ All done! Layer is now available in your AWS account.${NC}\n"
     printf "📁 Zip file saved: ${CYAN}$output_dir/$zip_file${NC}\n"
+}
+
+# Function to convert file paths for compatibility across environments
+convert_path() {
+    local input_path="$1"
+    case "$(uname -s)" in
+        Linux)
+            if grep -qEi "microsoft|wsl" /proc/version &>/dev/null; then
+                # WSL detected, no conversion needed
+                echo "$input_path"
+            else
+                # Native Linux
+                echo "$input_path"
+            fi
+            ;;
+        Darwin)
+            # macOS
+            echo "$input_path"
+            ;;
+        CYGWIN*|MINGW*|MSYS*)
+            # Git Bash or Cygwin on Windows
+            cygpath -w "$input_path"
+            ;;
+        *)
+            # Default case (no conversion)
+            echo "$input_path"
+            ;;
+    esac
 }
 
 # Main command parsing
