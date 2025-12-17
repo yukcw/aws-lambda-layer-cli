@@ -186,3 +186,14 @@ $RECYCLE.BIN/
 
 output/
 
+# Python packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+.venv/
+
+# Node packaging
+node_modules/
+*.tgz
+

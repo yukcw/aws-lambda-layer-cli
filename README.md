@@ -1,6 +1,6 @@
 # AWS Lambda Layer CLI Tool
 
-A ~~powerful~~ vibe-coded command-line tool for creating and publishing AWS Lambda layers for Node.js and Python.
+A command-line tool for creating and publishing AWS Lambda layers for Node.js and Python.
 
 ## Features
 
@@ -17,6 +17,31 @@ A ~~powerful~~ vibe-coded command-line tool for creating and publishing AWS Lamb
 
 ## Installation
 
+### Package managers (recommended)
+
+These installs do **not** write to `/usr/local` and do **not** require `sudo`.
+
+#### npm (Node.js)
+
+```bash
+npm i -g aws-lambda-layer-cli
+aws-lambda-layer --help
+```
+
+#### pip (Python)
+
+```bash
+python -m pip install --user aws-lambda-layer-cli
+aws-lambda-layer --help
+```
+
+#### uv (Python)
+
+```bash
+uv tool install aws-lambda-layer-cli
+aws-lambda-layer --help
+```
+
 ### Linux/macOS
 
 ```bash
@@ -25,7 +50,7 @@ git clone <repository-url>
 cd aws-lambda-layer-cli
 
 # Run installation script (requires sudo)
-sudo ./install.sh
+sudo ./scripts/install.sh
 ```
 
 The installation will:
@@ -39,14 +64,14 @@ The installation will:
 
 ```powershell
 # One-liner installation
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/scripts/install.ps1 | iex"
 ```
 
 Or download and run manually:
 
 ```powershell
 # Download the installer
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/install.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/scripts/install.ps1" -OutFile "install.ps1"
 
 # Run the installer (as Administrator)
 .\install.ps1
@@ -70,7 +95,7 @@ This will:
 ### Requirements
 
 - **Linux/macOS**: Bash shell
-- **Windows**: Windows Subsystem for Linux (WSL) or Git Bash or Cygwin
+- **Windows**: Windows Subsystem for Linux (WSL) (recommended), or Git Bash/Cygwin
 - **AWS CLI**: Required for `publish` command
 - **Node.js**: Required for Node.js layer creation
 - **Python**: Required for Python layer creation (uv recommended)
@@ -80,10 +105,23 @@ This will:
 
 ## Uninstallation
 
+### Package managers
+
+```bash
+# npm
+npm uninstall -g aws-lambda-layer-cli
+
+# pip
+python -m pip uninstall aws-lambda-layer-cli
+
+# uv
+uv tool uninstall aws-lambda-layer-cli
+```
+
 ### Linux/macOS
 
 ```bash
-sudo ./uninstall.sh
+sudo ./scripts/uninstall.sh
 ```
 
 ### Windows
@@ -92,14 +130,14 @@ sudo ./uninstall.sh
 
 ```powershell
 # Download and run the uninstaller
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/uninstall.ps1" -OutFile "uninstall.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/scripts/uninstall.ps1" -OutFile "uninstall.ps1"
 .\uninstall.ps1
 ```
 
 Or run directly without downloading:
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/uninstall.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/scripts/uninstall.ps1 | iex"
 ```
 #### Troubleshooting Windows Installation
 
@@ -318,7 +356,7 @@ Creates a zip file in the current directory with format:
    ```
 
 2. **IAM permissions missing**
-   - Ensure your IAM user has `lambda:PublishLayerVersion` permission
+   - Ensure your AWS credentials has `lambda:PublishLayerVersion` permission
 
 3. **Layer name already exists**
    - Use `--name` option to specify a different name

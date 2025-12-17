@@ -1,0 +1,34 @@
+{
+  "name": "aws-lambda-layer-cli",
+  "version": "1.4.0",
+  "description": "CLI tool for creating and publishing AWS Lambda layers for Node.js and Python.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yukcw/aws-lambda-layer-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yukcw/aws-lambda-layer-cli/issues"
+  },
+  "homepage": "https://github.com/yukcw/aws-lambda-layer-cli#readme",
+  "bin": {
+    "aws-lambda-layer": "bin/aws-lambda-layer.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "completion/",
+    "scripts/",
+    "aws-lambda-layer",
+    "create_nodejs_layer.sh",
+    "create_python_layer.sh",
+    "install.sh",
+    "install.ps1",
+    "uninstall.sh",
+    "uninstall.ps1",
+    "README.md",
+    "LICENSE"
+  ]
+}

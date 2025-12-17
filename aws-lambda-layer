@@ -94,7 +94,7 @@ show_help() {
 
 # Show version
 show_version() {
-    echo "aws-lambda-layer v1.3.0"
+    echo "aws-lambda-layer v1.4.0"
     echo "AWS Lambda Layer Creator and Publisher CLI Tool"
 }
 
@@ -349,7 +349,7 @@ handle_zip() {
             exit 1
         fi
         printf "${BLUE}Creating Node.js Lambda layer (local zip)...${NC}\n"
-        "$NODE_SCRIPT" -i "$packages" "$@"
+        bash "$NODE_SCRIPT" -i "$packages" "$@"
         local exit_code=$?
         cd "$current_dir"
         exit $exit_code
@@ -361,7 +361,7 @@ handle_zip() {
             exit 1
         fi
         printf "${BLUE}Creating Python Lambda layer (local zip)...${NC}\n"
-        "$PYTHON_SCRIPT" -i "$packages" "$@"
+        bash "$PYTHON_SCRIPT" -i "$packages" "$@"
         local exit_code=$?
         cd "$current_dir"
         exit $exit_code
@@ -547,7 +547,7 @@ handle_publish() {
             printf "${RED}Error: Node.js script not found${NC}\n"
             exit 1
         fi
-        "$NODE_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
+        bash "$NODE_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
         
         # Check if build script succeeded
         if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -579,7 +579,7 @@ handle_publish() {
             printf "${RED}Error: Python script not found${NC}\n"
             exit 1
         fi
-        "$PYTHON_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
+        bash "$PYTHON_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
         
         # Check if build script succeeded
         if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -756,7 +756,12 @@ convert_path() {
             ;;
         CYGWIN*|MINGW*|MSYS*)
             # Git Bash or Cygwin on Windows
-            cygpath -w "$input_path"
+            # Prefer C:/ style to avoid fileb:// URI parsing issues with backslashes
+            if command -v cygpath >/dev/null 2>&1; then
+                cygpath -m "$input_path"
+            else
+                echo "$input_path"
+            fi
             ;;
         *)
             # Default case (no conversion)
