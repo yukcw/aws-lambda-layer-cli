@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AWS Lambda Layer CLI Tool
-# Install: sudo ./install.sh
+# Install: sudo ./scripts/install.sh
 # Usage: aws-lambda-layer zip --nodejs express,axios -n my-layer
 
 set -e
@@ -10,10 +10,19 @@ set -u
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
+WHITE='\033[0;37m'
 NC='\033[0m' # No Color
+
+# Styles
+BOLD='\033[1m'
+ITALIC='\033[3m'
+UNDERLINE='\033[4m'
+REVERSE='\033[7m'
+STRIKETHROUGH='\033[9m'
 
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,56 +46,57 @@ COMPLETION_DIR="/etc/bash_completion.d"
 
 # Show help
 show_help() {
-    printf "${GREEN}AWS Lambda Layer CLI Tool${NC}\n\n"
+    local version_file="$SCRIPT_DIR/VERSION.txt"
+    local version="1.4.1"
+    if [ -f "$version_file" ]; then
+        version=$(cat "$version_file")
+    fi
+    printf "${BLUE}${BOLD}AWS Lambda Layer CLI Tool - ${version}${NC}\n\n"
     
     printf "${BLUE}Usage:${NC}\n"
-    printf "  aws-lambda-layer zip --nodejs <packages> [options]\n"
-    printf "  aws-lambda-layer zip --python <packages> [options]\n"
-    printf "  aws-lambda-layer publish --nodejs <packages> [options]\n"
-    printf "  aws-lambda-layer publish --python <packages> [options]\n"
-    printf "  aws-lambda-layer --help\n\n"
+    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--python${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--python${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer ${GREEN}help${NC}\n"
+    printf "  aws-lambda-layer [options]\n\n"
     
     printf "${BLUE}Commands:${NC}\n"
-    printf "  zip            Create and package a Lambda layer as zip file\n"
-    printf "  publish        Create and publish a Lambda layer to AWS (uses IAM credentials)\n"
-    printf "  help           Show this help message\n\n"
+    printf "  ${GREEN}zip${NC}            Create and package a Lambda layer as zip file\n"
+    printf "  ${GREEN}publish${NC}        Create and publish a Lambda layer to AWS (uses IAM credentials)\n"
+    printf "  ${GREEN}help${NC}           Show this help message\n\n"
     
     printf "${BLUE}Runtime Options:${NC}\n"
-    printf "  --nodejs, --node, -n    Create a Node.js Lambda layer\n"
-    printf "  --python, --py, -p      Create a Python Lambda layer\n"
-    printf "  --runtime=RUNTIME       Specify runtime (nodejs or python)\n\n"
-    
+    printf "  ${YELLOW}--nodejs, --node, -n${NC}    Create a Node.js Lambda layer\n"
+    printf "  ${YELLOW}--python, --py, -p${NC}      Create a Python Lambda layer\n"
+    printf "  ${YELLOW}--runtime=RUNTIME${NC}       Specify runtime (nodejs or python)\n"
     printf "${BLUE}Arguments:${NC}\n"
-    printf "  <packages>              Comma-separated list of packages with optional versions (required)\n\n"
-    
+    printf "  <packages>              Comma-separated list of packages with optional versions (required)\n"
+
     printf "${BLUE}Common Options:${NC}\n"
-    printf "  --name                  Name for the output zip file / layer name\n"
-    printf "  --description           Description for the layer (publish command only)\n"
-    printf "  -h, --help              Show this help message\n\n"
-    
+    printf "  ${YELLOW}--name${NC}                  Name for the output zip file / layer name\n"
+    printf "  ${YELLOW}--description${NC}           Description for the layer (publish command only)\n"
     printf "${BLUE}AWS Options (publish command only):${NC}\n"
-    printf "  --profile               AWS CLI profile to use (default: default profile)\n"
-    printf "  --region                AWS region (e.g., us-east-1, ap-east-1)\n\n"
+    printf "  ${YELLOW}--profile${NC}               AWS CLI profile to use (default: default profile)\n"
+    printf "  ${YELLOW}--region${NC}                AWS region (e.g., us-east-1, ap-east-1)\n"
+    printf "${BLUE}Other Options:${NC}\n"
+    printf "  ${YELLOW}--node-version${NC}          Node.js version (default: 24)\n"
+    printf "  ${YELLOW}--python-version${NC}        Python version (default: 3.14)\n"
+    printf "  ${YELLOW}--no-uv${NC}                 Use pip/venv instead of uv\n\n"
     
-    printf "${BLUE}Node.js Specific Options:${NC}\n"
-    printf "  --node-version          Node.js version (default: 24)\n\n"
+    printf "${MAGENTA}${UNDERLINE}Package Version Examples:${NC}\n"
+    printf "  Node.js:    express@^4.0.0, lodash@~4.17.0, axios@>=1.6.0\n"
+    printf "  Python:     numpy==1.26.0, pandas>=2.1.0, requests~=2.31.0\n\n"
     
-    printf "${BLUE}Python Specific Options:${NC}\n"
-    printf "  --python-version        Python version (default: 3.14)\n"
-    printf "  --no-uv                 Use pip/venv instead of uv\n\n"
+    printf "${MAGENTA}${UNDERLINE}Examples:${NC}\n"
+    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} express,lodash\n"
+    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--python${NC} \"numpy==1.26.0,pandas>=2.1.0\"\n"
+    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} express@4.18.2 ${YELLOW}--description${NC} \"Express layer\"\n"
+    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--python${NC} numpy==1.26.0 ${YELLOW}--description${NC} \"NumPy layer\"\n"
+    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} date-fns,uuid ${YELLOW}--name${NC} utility-layer ${YELLOW}--description${NC} \"Utility packages\"\n"
+    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} express@4.18.2 ${YELLOW}--profile${NC} production ${YELLOW}--region${NC} ap-east-1 ${YELLOW}--description${NC} \"Express layer\"\n\n"
     
-    printf "${BLUE}Package Version Examples:${NC}\n"
-    printf "  Node.js:    express@4.18.2,@babel/core@7.23.0,@babel/types@7.23.0\n"
-    printf "  Python:     numpy==1.26.0,pandas==2.1.3,requests>=2.31.0\n\n"
-    
-    printf "${BLUE}Examples:${NC}\n"
-    printf "  aws-lambda-layer zip --nodejs express@4.18.2\n"
-    printf "  aws-lambda-layer zip --python numpy==1.26.0,pandas==2.1.3\n"
-    printf "  aws-lambda-layer publish --nodejs express@4.18.2 --description \"Express layer\"\n"
-    printf "  aws-lambda-layer publish --python numpy==1.26.0 --description \"NumPy layer\"\n"
-    printf "  aws-lambda-layer publish --nodejs date-fns,uuid --name utility-layer --description \"Utility packages\"\n\n"
-    
-    printf "${YELLOW}Requirements for publish command:${NC}\n"
+    printf "${YELLOW}${BOLD}Requirements for publish command:${NC}\n"
     printf "  - AWS CLI installed and configured\n"
     printf "  - IAM credentials with lambda:PublishLayerVersion permission\n"
     printf "  - Proper AWS region configuration\n"
@@ -94,8 +104,14 @@ show_help() {
 
 # Show version
 show_version() {
-    echo "aws-lambda-layer v1.4.0"
-    echo "AWS Lambda Layer Creator and Publisher CLI Tool"
+    local version_file="$SCRIPT_DIR/VERSION.txt"
+    if [ -f "$version_file" ]; then
+        local version=$(cat "$version_file")
+        echo "v$version"
+    else
+        # Fallback if VERSION file is missing (e.g. during development or if moved)
+        echo "v1.4.1"
+    fi
 }
 
 # Check if AWS CLI is installed and configured
@@ -345,7 +361,7 @@ handle_zip() {
         if [ ! -f "$NODE_SCRIPT" ]; then
             cd "$current_dir"
             printf "${RED}Error: Node.js script not found at $NODE_SCRIPT${NC}\n"
-            printf "Please run install.sh first\n"
+            printf "Please run scripts/install.sh first\n"
             exit 1
         fi
         printf "${BLUE}Creating Node.js Lambda layer (local zip)...${NC}\n"
@@ -357,7 +373,7 @@ handle_zip() {
         if [ ! -f "$PYTHON_SCRIPT" ]; then
             cd "$current_dir"
             printf "${RED}Error: Python script not found at $PYTHON_SCRIPT${NC}\n"
-            printf "Please run install.sh first\n"
+            printf "Please run scripts/install.sh first\n"
             exit 1
         fi
         printf "${BLUE}Creating Python Lambda layer (local zip)...${NC}\n"

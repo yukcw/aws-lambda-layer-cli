@@ -413,8 +413,10 @@ function Install-Tool {
     $files = @(
         "aws-lambda-layer",
         "create_nodejs_layer.sh",
-        "create_python_layer.sh",
-        "install.sh",
+        "create_python_layer.sh"
+    )
+
+    $scripts = @(
         "uninstall.sh",
         "uninstall.ps1"
     )
@@ -430,6 +432,20 @@ function Install-Tool {
             Write-ColorOutput "✓ Downloaded $file" $Green
         } catch {
             Write-ColorOutput "✗ Failed to download $file" $Red
+            Write-ColorOutput "Error: $($_.Exception.Message)" $Red
+            return $false
+        }
+    }
+
+    foreach ($script in $scripts) {
+        $url = "$baseUrl/scripts/$script"
+        $outputPath = Join-Path $InstallDir $script
+
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outputPath
+            Write-ColorOutput "✓ Downloaded $script" $Green
+        } catch {
+            Write-ColorOutput "✗ Failed to download $script" $Red
             Write-ColorOutput "Error: $($_.Exception.Message)" $Red
             return $false
         }

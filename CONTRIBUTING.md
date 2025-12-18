@@ -25,7 +25,22 @@ The project is structured to support multiple distribution methods (direct scrip
 
 Modify the core scripts (`aws-lambda-layer`, `create_*.sh`) in the root directory. These changes will be picked up by all distribution methods.
 
-### 2. Building for PyPI (Python)
+### 2. Building for npm (Node.js)
+
+The npm package wraps the bash scripts.
+
+```bash
+# Create a tarball
+npm pack
+
+# Install globally from tarball to test
+npm install -g aws-lambda-layer-cli-*.tgz
+
+# Verify installation
+aws-lambda-layer --version
+```
+
+### 3. Building for PyPI (Python)
 
 The Python package is built using a script that bundles the core bash scripts into the package assets.
 
@@ -51,21 +66,6 @@ pip install dist/aws_lambda_layer_cli-*.whl
 aws-lambda-layer --version
 ```
 
-### 3. Building for npm (Node.js)
-
-The npm package wraps the bash scripts.
-
-```bash
-# Create a tarball
-npm pack
-
-# Install globally from tarball to test
-npm install -g aws-lambda-layer-cli-*.tgz
-
-# Verify installation
-aws-lambda-layer --version
-```
-
 ### 4. Testing Installers
 
 To test the direct installation scripts:
@@ -80,11 +80,7 @@ sudo ./scripts/install.sh
 
 ## Release Process
 
-1. Update version in:
-   - `package.json`
-   - `pyproject.toml`
-   - `aws-lambda-layer` (in `show_version` function)
-   - `scripts/pypi_resources/__init__.py`
+1. Update version in VERSION.txt
 
 2. Build and publish:
    - **PyPI**: Run `./scripts/build_pypi.sh` and upload `dist/*` using `twine`.

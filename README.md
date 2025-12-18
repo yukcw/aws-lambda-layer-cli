@@ -149,7 +149,7 @@ If you encounter issues:
 
 2. **"No such file or directory"**
    - Try running: `bash "$env:USERPROFILE\.aws-lambda-layer\aws-lambda-layer" --help`
-   - Or reinstall: `powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/install.ps1 | iex"`
+   - Or reinstall: `powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/scripts/install.ps1 | iex"`
 
 3. **Permission issues**
    - Run PowerShell as Administrator

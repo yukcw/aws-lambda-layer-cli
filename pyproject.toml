@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aws-lambda-layer-cli"
-version = "1.4.0"
+dynamic = ["version"]
 description = "CLI tool for creating and publishing AWS Lambda layers for Node.js and Python."
 readme = "README.md"
 license = {text = "MIT"}
@@ -20,10 +20,13 @@ urls = {Source = "https://github.com/yukcw/aws-lambda-layer-cli", Issues = "http
 [project.scripts]
 aws-lambda-layer = "aws_lambda_layer_cli.cli:main"
 
+[tool.setuptools.dynamic]
+version = {file = "VERSION.txt"}
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["aws_lambda_layer_cli*"]
 exclude = ["test", "tests"]
 
 [tool.setuptools.package-data]
-"aws_lambda_layer_cli" = ["assets/*"]
+"aws_lambda_layer_cli" = ["assets/*", "VERSION.txt"]

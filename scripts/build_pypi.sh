@@ -17,6 +17,7 @@ mkdir -p "$ASSETS_DIR"
 # Copy Python package files
 cp "$BASE_DIR/scripts/pypi_resources/__init__.py" "$BUILD_DIR/"
 cp "$BASE_DIR/scripts/pypi_resources/cli.py" "$BUILD_DIR/"
+cp "$BASE_DIR/VERSION.txt" "$BUILD_DIR/"
 
 # Copy assets (bash scripts)
 cp "$BASE_DIR/aws-lambda-layer" "$ASSETS_DIR/"
