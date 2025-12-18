@@ -28,21 +28,39 @@
 #>
 
 param(
-    [string]$InstallDir = "$env:USERPROFILE\.aws-lambda-layer",
+    [string]$InstallDir,
     [switch]$Force
 )
+
+# Set default InstallDir if not provided
+if ([string]::IsNullOrEmpty($InstallDir)) {
+    if ($env:USERPROFILE) {
+        $InstallDir = "$env:USERPROFILE\.aws-lambda-layer"
+    } else {
+        $InstallDir = "$env:HOME/.aws-lambda-layer"
+    }
+}
 
 # Configuration
 $RepoUrl = "https://github.com/yukcw/aws-lambda-layer-cli"
 $ToolName = "aws-lambda-layer"
-$Version = "1.2.0"
+$Version = "1.4.1" # Fallback version
+$VersionFile = Join-Path $PSScriptRoot ".." "VERSION.txt"
+if (Test-Path $VersionFile) {
+    $VersionContent = Get-Content $VersionFile -Raw -ErrorAction SilentlyContinue
+    if ($VersionContent) {
+        $Version = $VersionContent.Trim()
+    }
+}
 
 # Colors for output
 $Green = "Green"
 $Yellow = "Yellow"
 $Red = "Red"
+$Blue = "Blue"
 $Cyan = "Cyan"
 $White = "White"
+$Magenta = "Magenta"
 
 function Write-ColorOutput {
     param(
@@ -54,7 +72,7 @@ function Write-ColorOutput {
 
 function Write-Header {
     Write-ColorOutput "`n=========================================" $Cyan
-    Write-ColorOutput "AWS Lambda Layer CLI Tool Installer" $Green
+    Write-ColorOutput "AWS Lambda Layer CLI Tool Installer" $Cyan
     Write-ColorOutput "=========================================" $Cyan
     Write-ColorOutput "Version: $Version" $White
     Write-ColorOutput "Install Directory: $InstallDir" $White
@@ -413,7 +431,8 @@ function Install-Tool {
     $files = @(
         "aws-lambda-layer",
         "create_nodejs_layer.sh",
-        "create_python_layer.sh"
+        "create_python_layer.sh",
+        "VERSION.txt"
     )
 
     $scripts = @(
@@ -422,32 +441,63 @@ function Install-Tool {
     )
 
     $baseUrl = "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main"
+    
+    $localRoot = $null
+    if ($PSScriptRoot) {
+        $localRoot = Join-Path $PSScriptRoot ".."
+    }
 
     foreach ($file in $files) {
-        $url = "$baseUrl/$file"
         $outputPath = Join-Path $InstallDir $file
+        
+        $useLocal = $false
+        if ($localRoot) {
+            $localPath = Join-Path $localRoot $file
+            if (Test-Path $localPath) {
+                $useLocal = $true
+            }
+        }
 
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $outputPath
-            Write-ColorOutput "✓ Downloaded $file" $Green
-        } catch {
-            Write-ColorOutput "✗ Failed to download $file" $Red
-            Write-ColorOutput "Error: $($_.Exception.Message)" $Red
-            return $false
+        if ($useLocal) {
+            Copy-Item -Path $localPath -Destination $outputPath -Force
+            Write-ColorOutput "✓ Copied $file (local)" $Green
+        } else {
+            $url = "$baseUrl/$file"
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $outputPath
+                Write-ColorOutput "✓ Downloaded $file" $Green
+            } catch {
+                Write-ColorOutput "✗ Failed to download $file" $Red
+                Write-ColorOutput "Error: $($_.Exception.Message)" $Red
+                return $false
+            }
         }
     }
 
     foreach ($script in $scripts) {
-        $url = "$baseUrl/scripts/$script"
         $outputPath = Join-Path $InstallDir $script
+        
+        $useLocal = $false
+        if ($localRoot) {
+            $localPath = Join-Path $localRoot "scripts" $script
+            if (Test-Path $localPath) {
+                $useLocal = $true
+            }
+        }
 
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $outputPath
-            Write-ColorOutput "✓ Downloaded $script" $Green
-        } catch {
-            Write-ColorOutput "✗ Failed to download $script" $Red
-            Write-ColorOutput "Error: $($_.Exception.Message)" $Red
-            return $false
+        if ($useLocal) {
+            Copy-Item -Path $localPath -Destination $outputPath -Force
+            Write-ColorOutput "✓ Copied $script (local)" $Green
+        } else {
+            $url = "$baseUrl/scripts/$script"
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $outputPath
+                Write-ColorOutput "✓ Downloaded $script" $Green
+            } catch {
+                Write-ColorOutput "✗ Failed to download $script" $Red
+                Write-ColorOutput "Error: $($_.Exception.Message)" $Red
+                return $false
+            }
         }
     }
 
@@ -461,14 +511,27 @@ function Install-Tool {
     )
 
     foreach ($file in $completionFiles) {
-        $url = "$baseUrl/$file"
         $outputPath = Join-Path $InstallDir $file
+        
+        $useLocal = $false
+        if ($localRoot) {
+            $localPath = Join-Path $localRoot $file
+            if (Test-Path $localPath) {
+                $useLocal = $true
+            }
+        }
 
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $outputPath
-            Write-ColorOutput "✓ Downloaded $file" $Green
-        } catch {
-            Write-ColorOutput "! Failed to download $file (optional)" $Yellow
+        if ($useLocal) {
+            Copy-Item -Path $localPath -Destination $outputPath -Force
+            Write-ColorOutput "✓ Copied $file (local)" $Green
+        } else {
+            $url = "$baseUrl/$file"
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $outputPath
+                Write-ColorOutput "✓ Downloaded $file" $Green
+            } catch {
+                Write-ColorOutput "! Failed to download $file (optional)" $Yellow
+            }
         }
     }
 
@@ -491,6 +554,12 @@ function Install-Tool {
                 # Write with UTF-8 (No BOM) to ensure compatibility
                 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
                 [System.IO.File]::WriteAllText($file.FullName, $content, $utf8NoBom)
+                
+                # If not on Windows, set executable bit
+                if (-not $IsWindows) {
+                    chmod +x $file.FullName
+                }
+
                 Write-ColorOutput "✓ Prepared $($file.Name)" $Green
             }
         } catch {
@@ -602,13 +671,11 @@ function Show-PostInstall {
     Write-ColorOutput "The AWS Lambda Layer CLI tool has been installed to:" $White
     Write-ColorOutput "  $InstallDir" $Cyan
     Write-ColorOutput ""
-    Write-ColorOutput "Usage:" $Yellow
-    Write-ColorOutput "  # Create a local zip file" $White
-    Write-ColorOutput "  aws-lambda-layer zip --nodejs express@4.18.2" $Cyan
-    Write-ColorOutput "  aws-lambda-layer zip --python requests==2.31.0" $Cyan
-    Write-ColorOutput ""
-    Write-ColorOutput "  # Publish directly to AWS" $White
-    Write-ColorOutput "  aws-lambda-layer publish --nodejs express --description ""Express layer""" $Cyan
+    Write-ColorOutput "Usage examples:" $Magenta
+    Write-Host "  aws-lambda-layer zip --nodejs " -NoNewline -ForegroundColor $Cyan
+    Write-Host """express@^4.0.0,lodash@~4.17.0""" -ForegroundColor $White
+    Write-Host "  aws-lambda-layer zip --python " -NoNewline -ForegroundColor $Cyan
+    Write-Host """numpy==1.26.0,pandas>=2.1.0""" -ForegroundColor $White
     Write-ColorOutput ""
     Write-ColorOutput "For more information:" $Yellow
     Write-ColorOutput "  aws-lambda-layer --help" $Cyan

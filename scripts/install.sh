@@ -7,11 +7,19 @@ set -e
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-NC='\033[0m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[0;37m'
+NC='\033[0m' # No Color
 
-printf "${BLUE}Installing AWS Lambda Layer CLI Tool...${NC}\n"
+# Styles
+BOLD='\033[1m'
+ITALIC='\033[3m'
+UNDERLINE='\033[4m'
+
+printf "${CYAN}${BOLD}Installing AWS Lambda Layer CLI Tool...${NC}\n"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
@@ -27,6 +35,7 @@ fi
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INSTALL_DIR="/usr/local/lib/aws-lambda-layer"
 BIN_DIR="/usr/local/bin"
 COMPLETION_DIR="/etc/bash_completion.d"
@@ -40,6 +49,7 @@ printf "${BLUE}Copying scripts...${NC}\n"
 $SUDO cp "$SCRIPT_DIR/aws-lambda-layer" "$INSTALL_DIR/"
 $SUDO cp "$SCRIPT_DIR/create_nodejs_layer.sh" "$INSTALL_DIR/"
 $SUDO cp "$SCRIPT_DIR/create_python_layer.sh" "$INSTALL_DIR/"
+$SUDO cp "$BASE_DIR/VERSION.txt" "$INSTALL_DIR/"
 
 # Make scripts executable
 printf "${BLUE}Setting executable permissions...${NC}\n"
@@ -54,7 +64,7 @@ $SUDO ln -sf "$INSTALL_DIR/aws-lambda-layer" "$BIN_DIR/aws-lambda-layer"
 # Install bash completion
 printf "${BLUE}Installing bash completion...${NC}\n"
 if [ -d "$COMPLETION_DIR" ]; then
-    $SUDO cp "$SCRIPT_DIR/completion/aws-lambda-layer-completion.bash" "$COMPLETION_DIR/aws-lambda-layer"
+    $SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.bash" "$COMPLETION_DIR/aws-lambda-layer"
     # Source the completion script
     if [ -f "$HOME/.bashrc" ]; then
         if ! grep -q "aws-lambda-layer" "$HOME/.bashrc"; then
@@ -82,14 +92,14 @@ else
 fi
 
 if [ -n "$ZSH_COMPLETION_DIR" ]; then
-    $SUDO cp "$SCRIPT_DIR/completion/aws-lambda-layer-completion.zsh" "$ZSH_COMPLETION_DIR/_aws-lambda-layer"
+    $SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.zsh" "$ZSH_COMPLETION_DIR/_aws-lambda-layer"
     printf "${GREEN}Zsh completion installed to: $ZSH_COMPLETION_DIR${NC}\n"
 fi
 
-printf "${GREEN}✅ Installation complete!${NC}\n\n"
-printf "${BLUE}Usage examples:${NC}\n"
-printf "  aws-lambda-layer zip --nodejs express@4.18.2\n"
-printf "  aws-lambda-layer zip --python numpy==1.26.0\n\n"
+printf "${GREEN}${BOLD}✅ Installation complete!${NC}\n\n"
+printf "${MAGENTA}${UNDERLINE}Usage examples:${NC}\n"
+printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} \"express@^4.0.0,lodash@~4.17.0\"\n"
+printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--python${NC} \"numpy==1.26.0,pandas>=2.1.0\"\n\n"
 printf "${YELLOW}To enable tab completion, restart your shell:${NC}\n"
 printf "  For bash: source ~/.bashrc\n"
 printf "  For zsh:  exec zsh\n\n"
