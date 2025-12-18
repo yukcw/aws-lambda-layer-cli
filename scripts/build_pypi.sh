@@ -20,9 +20,9 @@ cp "$BASE_DIR/scripts/pypi_resources/cli.py" "$BUILD_DIR/"
 cp "$BASE_DIR/VERSION.txt" "$BUILD_DIR/"
 
 # Copy assets (bash scripts)
-cp "$BASE_DIR/aws-lambda-layer" "$ASSETS_DIR/"
-cp "$BASE_DIR/create_nodejs_layer.sh" "$ASSETS_DIR/"
-cp "$BASE_DIR/create_python_layer.sh" "$ASSETS_DIR/"
+cp "$BASE_DIR/scripts/aws-lambda-layer" "$ASSETS_DIR/"
+cp "$BASE_DIR/scripts/create_nodejs_layer.sh" "$ASSETS_DIR/"
+cp "$BASE_DIR/scripts/create_python_layer.sh" "$ASSETS_DIR/"
 
 # Create __init__.py for assets package
 touch "$ASSETS_DIR/__init__.py"

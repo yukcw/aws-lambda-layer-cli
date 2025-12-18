@@ -25,9 +25,6 @@
     "bin/",
     "completion/",
     "scripts/",
-    "aws-lambda-layer",
-    "create_nodejs_layer.sh",
-    "create_python_layer.sh",
     "README.md",
     "LICENSE"
   ]

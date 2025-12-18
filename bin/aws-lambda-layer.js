@@ -50,7 +50,7 @@ function run(cmd, args) {
 }
 
 const args = process.argv.slice(2);
-const bashScript = path.resolve(__dirname, '..', 'aws-lambda-layer');
+const bashScript = path.resolve(__dirname, '..', 'scripts', 'aws-lambda-layer');
 
 if (!fs.existsSync(bashScript)) {
   console.error('Error: packaged bash script not found:', bashScript);

@@ -45,15 +45,6 @@ if ([string]::IsNullOrEmpty($InstallDir)) {
 $RepoUrl = "https://github.com/yukcw/aws-lambda-layer-cli"
 $ToolName = "aws-lambda-layer"
 $Version = "1.4.1" # Fallback version
-if ($PSScriptRoot) {
-    $VersionFile = Join-Path $PSScriptRoot ".." "VERSION.txt"
-    if (Test-Path $VersionFile) {
-        $VersionContent = Get-Content $VersionFile -Raw -ErrorAction SilentlyContinue
-        if ($VersionContent) {
-            $Version = $VersionContent.Trim()
-        }
-    }
-}
 
 # Colors for output
 $Green = "Green"
@@ -444,62 +435,29 @@ function Install-Tool {
 
     $baseUrl = "https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main"
     
-    $localRoot = $null
-    if ($PSScriptRoot) {
-        $localRoot = Join-Path $PSScriptRoot ".."
-    }
-
     foreach ($file in $files) {
         $outputPath = Join-Path $InstallDir $file
-        
-        $useLocal = $false
-        if ($localRoot) {
-            $localPath = Join-Path $localRoot $file
-            if (Test-Path $localPath) {
-                $useLocal = $true
-            }
-        }
-
-        if ($useLocal) {
-            Copy-Item -Path $localPath -Destination $outputPath -Force
-            Write-ColorOutput "✓ Copied $file (local)" $Green
-        } else {
-            $url = "$baseUrl/$file"
-            try {
-                Invoke-WebRequest -Uri $url -OutFile $outputPath
-                Write-ColorOutput "✓ Downloaded $file" $Green
-            } catch {
-                Write-ColorOutput "✗ Failed to download $file" $Red
-                Write-ColorOutput "Error: $($_.Exception.Message)" $Red
-                return $false
-            }
+        $url = "$baseUrl/$file"
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outputPath
+            Write-ColorOutput "✓ Downloaded $file" $Green
+        } catch {
+            Write-ColorOutput "✗ Failed to download $file" $Red
+            Write-ColorOutput "Error: $($_.Exception.Message)" $Red
+            return $false
         }
     }
 
     foreach ($script in $scripts) {
         $outputPath = Join-Path $InstallDir $script
-        
-        $useLocal = $false
-        if ($localRoot) {
-            $localPath = Join-Path $localRoot "scripts" $script
-            if (Test-Path $localPath) {
-                $useLocal = $true
-            }
-        }
-
-        if ($useLocal) {
-            Copy-Item -Path $localPath -Destination $outputPath -Force
-            Write-ColorOutput "✓ Copied $script (local)" $Green
-        } else {
-            $url = "$baseUrl/scripts/$script"
-            try {
-                Invoke-WebRequest -Uri $url -OutFile $outputPath
-                Write-ColorOutput "✓ Downloaded $script" $Green
-            } catch {
-                Write-ColorOutput "✗ Failed to download $script" $Red
-                Write-ColorOutput "Error: $($_.Exception.Message)" $Red
-                return $false
-            }
+        $url = "$baseUrl/scripts/$script"
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outputPath
+            Write-ColorOutput "✓ Downloaded $script" $Green
+        } catch {
+            Write-ColorOutput "✗ Failed to download $script" $Red
+            Write-ColorOutput "Error: $($_.Exception.Message)" $Red
+            return $false
         }
     }
 
@@ -514,26 +472,12 @@ function Install-Tool {
 
     foreach ($file in $completionFiles) {
         $outputPath = Join-Path $InstallDir $file
-        
-        $useLocal = $false
-        if ($localRoot) {
-            $localPath = Join-Path $localRoot $file
-            if (Test-Path $localPath) {
-                $useLocal = $true
-            }
-        }
-
-        if ($useLocal) {
-            Copy-Item -Path $localPath -Destination $outputPath -Force
-            Write-ColorOutput "✓ Copied $file (local)" $Green
-        } else {
-            $url = "$baseUrl/$file"
-            try {
-                Invoke-WebRequest -Uri $url -OutFile $outputPath
-                Write-ColorOutput "✓ Downloaded $file" $Green
-            } catch {
-                Write-ColorOutput "! Failed to download $file (optional)" $Yellow
-            }
+        $url = "$baseUrl/$file"
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outputPath
+            Write-ColorOutput "✓ Downloaded $file" $Green
+        } catch {
+            Write-ColorOutput "! Failed to download $file (optional)" $Yellow
         }
     }
 
