@@ -45,6 +45,13 @@ aws-lambda-layer --version
 The Python package is built using a script that bundles the core bash scripts into the package assets.
 
 ```bash
+# Create and activate virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install build tool
+pip install build
+
 # Build the package
 ./scripts/build_pypi.sh
 
@@ -80,8 +87,25 @@ sudo ./scripts/install.sh
 
 ## Release Process
 
-1. Update version in VERSION.txt
+1. Update version in `VERSION.txt`
 
-2. Build and publish:
-   - **PyPI**: Run `./scripts/build_pypi.sh` and upload `dist/*` using `twine`.
-   - **npm**: Run `npm publish`.
+2. **PyPI Release**:
+   ```bash
+   # Create and activate virtual environment
+   python3 -m venv .venv
+   source .venv/bin/activate
+
+   # Install build and publish tools
+   pip install build twine
+
+   # Build the package
+   ./scripts/build_pypi.sh
+
+   # Upload to PyPI
+   twine upload dist/*
+   ```
+
+3. **npm Release**:
+   ```bash
+   npm publish
+   ```

@@ -7,10 +7,9 @@ name = "aws-lambda-layer-cli"
 dynamic = ["version"]
 description = "CLI tool for creating and publishing AWS Lambda layers for Node.js and Python."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.8"
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Environment :: Console",
