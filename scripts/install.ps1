@@ -45,11 +45,13 @@ if ([string]::IsNullOrEmpty($InstallDir)) {
 $RepoUrl = "https://github.com/yukcw/aws-lambda-layer-cli"
 $ToolName = "aws-lambda-layer"
 $Version = "1.4.1" # Fallback version
-$VersionFile = Join-Path $PSScriptRoot ".." "VERSION.txt"
-if (Test-Path $VersionFile) {
-    $VersionContent = Get-Content $VersionFile -Raw -ErrorAction SilentlyContinue
-    if ($VersionContent) {
-        $Version = $VersionContent.Trim()
+if ($PSScriptRoot) {
+    $VersionFile = Join-Path $PSScriptRoot ".." "VERSION.txt"
+    if (Test-Path $VersionFile) {
+        $VersionContent = Get-Content $VersionFile -Raw -ErrorAction SilentlyContinue
+        if ($VersionContent) {
+            $Version = $VersionContent.Trim()
+        }
     }
 }
 
@@ -429,13 +431,13 @@ function Install-Tool {
     Write-ColorOutput "Downloading files..." $Yellow
 
     $files = @(
-        "aws-lambda-layer",
-        "create_nodejs_layer.sh",
-        "create_python_layer.sh",
         "VERSION.txt"
     )
 
     $scripts = @(
+        "aws-lambda-layer",
+        "create_nodejs_layer.sh",
+        "create_python_layer.sh",
         "uninstall.sh",
         "uninstall.ps1"
     )
@@ -672,13 +674,19 @@ function Show-PostInstall {
     Write-ColorOutput "  $InstallDir" $Cyan
     Write-ColorOutput ""
     Write-ColorOutput "Usage examples:" $Magenta
-    Write-Host "  aws-lambda-layer zip --nodejs " -NoNewline -ForegroundColor $Cyan
+    Write-Host "  aws-lambda-layer " -NoNewline -ForegroundColor $White
+    Write-Host "zip " -NoNewline -ForegroundColor $Green
+    Write-Host "--nodejs " -NoNewline -ForegroundColor $Yellow
     Write-Host """express@^4.0.0,lodash@~4.17.0""" -ForegroundColor $White
-    Write-Host "  aws-lambda-layer zip --python " -NoNewline -ForegroundColor $Cyan
+    Write-Host "  aws-lambda-layer " -NoNewline -ForegroundColor $White
+    Write-Host "zip " -NoNewline -ForegroundColor $Green
+    Write-Host "--python " -NoNewline -ForegroundColor $Yellow
     Write-Host """numpy==1.26.0,pandas>=2.1.0""" -ForegroundColor $White
     Write-ColorOutput ""
     Write-ColorOutput "For more information:" $Yellow
-    Write-ColorOutput "  aws-lambda-layer --help" $Cyan
+    Write-Host "  aws-lambda-layer " -NoNewline -ForegroundColor $White
+    Write-ColorOutput "help" $Green
+
     Write-ColorOutput ""
     Write-ColorOutput "Repository: $RepoUrl" $White
 }
