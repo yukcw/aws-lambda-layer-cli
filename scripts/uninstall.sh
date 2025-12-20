@@ -53,6 +53,15 @@ if command -v pip &> /dev/null || command -v pip3 &> /dev/null; then
     fi
 fi
 
+# Check uv
+if command -v uv &> /dev/null; then
+    if uv tool list | grep -q "aws-lambda-layer-cli"; then
+        printf "${YELLOW}Detected uv installation.${NC}\n"
+        printf "  Removing uv tool...\n"
+        uv tool uninstall aws-lambda-layer-cli
+    fi
+fi
+
 # Check Native (System)
 if [ -d "/usr/local/lib/aws-lambda-layer-cli" ]; then
     printf "${YELLOW}Detected Native/System installation.${NC}\n"

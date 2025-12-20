@@ -82,6 +82,7 @@ show_help() {
     printf "  ${YELLOW}--profile${NC}               AWS CLI profile to use (default: default profile)\n"
     printf "  ${YELLOW}--region${NC}                AWS region (e.g., us-east-1, ap-east-1)\n"
     printf "${BLUE}Other Options:${NC}\n"
+    printf "  ${YELLOW}--version, -v${NC}           Show tool version information\n"
     printf "  ${YELLOW}--node-version${NC}          Node.js version (default: 24)\n"
     printf "  ${YELLOW}--python-version${NC}        Python version (default: 3.14)\n"
     printf "  ${YELLOW}--no-uv${NC}                 Use pip/venv instead of uv\n\n"

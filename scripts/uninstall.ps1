@@ -160,6 +160,16 @@ function Main {
         }
     }
 
+    # Check uv
+    if (Get-Command uv -ErrorAction SilentlyContinue) {
+        $uvList = uv tool list 2>$null
+        if ($uvList -match "aws-lambda-layer-cli") {
+            Write-ColorOutput "Detected uv installation." $Yellow
+            Write-ColorOutput "Removing uv tool..." $White
+            uv tool uninstall aws-lambda-layer-cli
+        }
+    }
+
     # Check if tool is installed
     $isInstalled = Test-Installation
     if (-not $isInstalled) {
