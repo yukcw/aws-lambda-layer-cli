@@ -1,8 +1,12 @@
-# bash completion for aws-lambda-layer
+# bash completion for aws-lambda-layer-cli
 
-_aws_lambda_layer() {
+_aws_lambda_layer_cli() {
     local cur prev words cword
-    _init_completion || return
+    # Use fallback variables for older bash versions
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    words=("${COMP_WORDS[@]}")
+    cword=$COMP_CWORD
 
     local commands="zip publish help --help --version"
     local runtime_opts="--nodejs --node -n --python --py -p --runtime"
@@ -98,4 +102,4 @@ _aws_lambda_layer() {
     esac
 }
 
-complete -F _aws_lambda_layer aws-lambda-layer
+complete -F _aws_lambda_layer_cli aws-lambda-layer-cli

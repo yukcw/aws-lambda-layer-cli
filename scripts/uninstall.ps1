@@ -8,7 +8,7 @@
     Uninstalls the AWS Lambda Layer CLI tool from Windows systems.
 
 .PARAMETER InstallDir
-    Directory where the tool is installed (default: $env:USERPROFILE\.aws-lambda-layer)
+    Directory where the tool is installed (default: $env:USERPROFILE\.aws-lambda-layer-cli)
 
 .PARAMETER Force
     Force uninstallation without confirmation
@@ -34,9 +34,9 @@ param(
 # Determine InstallDir if not provided
 if ([string]::IsNullOrEmpty($InstallDir)) {
     if ($env:USERPROFILE) {
-        $InstallDir = Join-Path $env:USERPROFILE ".aws-lambda-layer"
+        $InstallDir = Join-Path $env:USERPROFILE ".aws-lambda-layer-cli"
     } elseif ($env:HOME) {
-        $InstallDir = Join-Path $env:HOME ".aws-lambda-layer"
+        $InstallDir = Join-Path $env:HOME ".aws-lambda-layer-cli"
     } else {
         Write-Error "Could not determine home directory. Please specify -InstallDir."
         exit 1
@@ -75,7 +75,7 @@ function Test-Installation {
         return $false
     }
 
-    $mainScript = Join-Path $InstallDir "aws-lambda-layer"
+    $mainScript = Join-Path $InstallDir "aws-lambda-layer-cli"
     if (-not (Test-Path $mainScript)) {
         Write-ColorOutput "Main script not found: $mainScript" $Yellow
         Write-ColorOutput "This doesn't look like a valid installation." $White

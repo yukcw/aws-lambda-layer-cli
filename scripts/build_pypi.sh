@@ -5,6 +5,7 @@ set -e
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$BASE_DIR/aws_lambda_layer_cli"
 ASSETS_DIR="$BUILD_DIR/assets"
+COMPLETION_DIR="$BUILD_DIR/completion"
 
 echo "Preparing PyPI package structure..."
 
@@ -13,6 +14,7 @@ rm -rf "$BUILD_DIR" "$BASE_DIR/dist" "$BASE_DIR/build" "$BASE_DIR/aws_lambda_lay
 
 # Create package directories
 mkdir -p "$ASSETS_DIR"
+mkdir -p "$COMPLETION_DIR"
 
 # Copy Python package files
 cp "$BASE_DIR/scripts/pypi_resources/__init__.py" "$BUILD_DIR/"
@@ -20,18 +22,24 @@ cp "$BASE_DIR/scripts/pypi_resources/cli.py" "$BUILD_DIR/"
 cp "$BASE_DIR/VERSION.txt" "$BUILD_DIR/"
 
 # Copy assets (bash scripts)
-cp "$BASE_DIR/scripts/aws-lambda-layer" "$ASSETS_DIR/"
+cp "$BASE_DIR/scripts/aws-lambda-layer-cli" "$ASSETS_DIR/"
 cp "$BASE_DIR/scripts/create_nodejs_layer.sh" "$ASSETS_DIR/"
 cp "$BASE_DIR/scripts/create_python_layer.sh" "$ASSETS_DIR/"
+cp "$BASE_DIR/scripts/uninstall.sh" "$ASSETS_DIR/"
 
-# Create __init__.py for assets package
+# Copy completion files
+cp "$BASE_DIR/completion/aws-lambda-layer-completion.bash" "$COMPLETION_DIR/"
+cp "$BASE_DIR/completion/aws-lambda-layer-completion.zsh" "$COMPLETION_DIR/"
+
+# Create __init__.py for assets and completion packages
 touch "$ASSETS_DIR/__init__.py"
+touch "$COMPLETION_DIR/__init__.py"
 
 echo "Building PyPI package..."
 cd "$BASE_DIR"
 python3 -m build
 
 echo "Cleaning up temporary package files..."
-rm -rf "$BUILD_DIR" "$BASE_DIR/aws_lambda_layer_cli.egg-info" "$BASE_DIR/build"
+# rm -rf "$BUILD_DIR" "$BASE_DIR/aws_lambda_layer_cli.egg-info" "$BASE_DIR/build"
 
 echo "Build complete! Artifacts are in dist/"

@@ -1,6 +1,6 @@
-#compdef aws-lambda-layer
+#compdef aws-lambda-layer-cli
 
-_aws-lambda-layer() {
+_aws-lambda-layer-cli() {
     local -a commands runtime_opts common_opts node_opts python_opts
     
     commands=(
@@ -107,4 +107,4 @@ _aws-lambda-layer() {
     esac
 }
 
-_aws-lambda-layer "$@"
+# _aws-lambda-layer-cli "$@"

@@ -9,7 +9,7 @@
     This tool requires Windows Subsystem for Linux (WSL) or Git Bash.
 
 .PARAMETER InstallDir
-    Directory where the tool will be installed (default: $env:USERPROFILE\.aws-lambda-layer)
+    Directory where the tool will be installed (default: $env:USERPROFILE\.aws-lambda-layer-cli)
 
 .PARAMETER Force
     Force reinstallation even if already installed
@@ -35,15 +35,15 @@ param(
 # Set default InstallDir if not provided
 if ([string]::IsNullOrEmpty($InstallDir)) {
     if ($env:USERPROFILE) {
-        $InstallDir = "$env:USERPROFILE\.aws-lambda-layer"
+        $InstallDir = "$env:USERPROFILE\.aws-lambda-layer-cli"
     } else {
-        $InstallDir = "$env:HOME/.aws-lambda-layer"
+        $InstallDir = "$env:HOME/.aws-lambda-layer-cli"
     }
 }
 
 # Configuration
 $RepoUrl = "https://github.com/yukcw/aws-lambda-layer-cli"
-$ToolName = "aws-lambda-layer"
+$ToolName = "aws-lambda-layer-cli"
 $Version = "1.4.1" # Fallback version
 
 # Colors for output
@@ -426,7 +426,7 @@ function Install-Tool {
     )
 
     $scripts = @(
-        "aws-lambda-layer",
+        "aws-lambda-layer-cli",
         "create_nodejs_layer.sh",
         "create_python_layer.sh",
         "uninstall.sh",
@@ -586,7 +586,7 @@ if %ERRORLEVEL% EQU 0 (
     REM Try to run with bash
     bash "!UNIX_PATH!/$ToolName" %*
     if !ERRORLEVEL! NEQ 0 (
-        echo Error: Failed to execute aws-lambda-layer
+        echo Error: Failed to execute aws-lambda-layer-cli
         echo Please check that the script exists and is executable
         echo Script path: !UNIX_PATH!/$ToolName
         pause
@@ -618,17 +618,17 @@ function Show-PostInstall {
     Write-ColorOutput "  $InstallDir" $Cyan
     Write-ColorOutput ""
     Write-ColorOutput "Usage examples:" $Magenta
-    Write-Host "  aws-lambda-layer " -NoNewline -ForegroundColor $White
+    Write-Host "  aws-lambda-layer-cli " -NoNewline -ForegroundColor $White
     Write-Host "zip " -NoNewline -ForegroundColor $Green
     Write-Host "--nodejs " -NoNewline -ForegroundColor $Yellow
     Write-Host """express@^4.0.0,lodash@~4.17.0""" -ForegroundColor $White
-    Write-Host "  aws-lambda-layer " -NoNewline -ForegroundColor $White
+    Write-Host "  aws-lambda-layer-cli " -NoNewline -ForegroundColor $White
     Write-Host "zip " -NoNewline -ForegroundColor $Green
     Write-Host "--python " -NoNewline -ForegroundColor $Yellow
     Write-Host """numpy==1.26.0,pandas>=2.1.0""" -ForegroundColor $White
     Write-ColorOutput ""
     Write-ColorOutput "For more information:" $Yellow
-    Write-Host "  aws-lambda-layer " -NoNewline -ForegroundColor $White
+    Write-Host "  aws-lambda-layer-cli " -NoNewline -ForegroundColor $White
     Write-ColorOutput "help" $Green
 
     Write-ColorOutput ""

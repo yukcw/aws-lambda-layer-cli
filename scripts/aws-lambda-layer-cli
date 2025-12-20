@@ -2,7 +2,7 @@
 
 # AWS Lambda Layer CLI Tool
 # Install: sudo ./scripts/install.sh
-# Usage: aws-lambda-layer zip --nodejs express,axios -n my-layer
+# Usage: aws-lambda-layer-cli zip --nodejs express,axios -n my-layer
 
 set -e
 set -u
@@ -26,7 +26,7 @@ STRIKETHROUGH='\033[9m'
 
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="/usr/local/lib/aws-lambda-layer"
+INSTALL_DIR="/usr/local/lib/aws-lambda-layer-cli"
 
 # Determine script locations (prefer relative to script, fallback to global install)
 if [ -f "$SCRIPT_DIR/create_nodejs_layer.sh" ]; then
@@ -54,16 +54,17 @@ show_help() {
     printf "${BLUE}${BOLD}AWS Lambda Layer CLI Tool - ${version}${NC}\n\n"
     
     printf "${BLUE}Usage:${NC}\n"
-    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
-    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--python${NC} <packages> [options]\n"
-    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
-    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--python${NC} <packages> [options]\n"
-    printf "  aws-lambda-layer ${GREEN}help${NC}\n"
-    printf "  aws-lambda-layer [options]\n\n"
+    printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--python${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--python${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer-cli ${GREEN}help${NC}\n"
+    printf "  aws-lambda-layer-cli [options]\n\n"
     
     printf "${BLUE}Commands:${NC}\n"
     printf "  ${GREEN}zip${NC}            Create and package a Lambda layer as zip file\n"
     printf "  ${GREEN}publish${NC}        Create and publish a Lambda layer to AWS (uses IAM credentials)\n"
+    printf "  ${GREEN}uninstall${NC}      Uninstall the tool and remove all files\n"
     printf "  ${GREEN}help${NC}           Show this help message\n\n"
     
     printf "${BLUE}Runtime Options:${NC}\n"
@@ -89,12 +90,12 @@ show_help() {
     printf "  Python:     numpy==1.26.0, pandas>=2.1.0, requests~=2.31.0\n\n"
     
     printf "${MAGENTA}${UNDERLINE}Examples:${NC}\n"
-    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} express,lodash\n"
-    printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--python${NC} \"numpy==1.26.0,pandas>=2.1.0\"\n"
-    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} express@4.18.2 ${YELLOW}--description${NC} \"Express layer\"\n"
-    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--python${NC} numpy==1.26.0 ${YELLOW}--description${NC} \"NumPy layer\"\n"
-    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} date-fns,uuid ${YELLOW}--name${NC} utility-layer ${YELLOW}--description${NC} \"Utility packages\"\n"
-    printf "  aws-lambda-layer ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} express@4.18.2 ${YELLOW}--profile${NC} production ${YELLOW}--region${NC} ap-east-1 ${YELLOW}--description${NC} \"Express layer\"\n\n"
+    printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} express,lodash\n"
+    printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--python${NC} \"numpy==1.26.0,pandas>=2.1.0\"\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} express@4.18.2 ${YELLOW}--description${NC} \"Express layer\"\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--python${NC} numpy==1.26.0 ${YELLOW}--description${NC} \"NumPy layer\"\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} date-fns,uuid ${YELLOW}--name${NC} utility-layer ${YELLOW}--description${NC} \"Utility packages\"\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} express@4.18.2 ${YELLOW}--profile${NC} production ${YELLOW}--region${NC} ap-east-1 ${YELLOW}--description${NC} \"Express layer\"\n\n"
     
     printf "${YELLOW}${BOLD}Requirements for publish command:${NC}\n"
     printf "  - AWS CLI installed and configured\n"
@@ -458,7 +459,12 @@ handle_publish() {
     done
     
     # Parse runtime flag from remaining arguments
-    set -- "${new_args[@]}"
+    if [ ${#new_args[@]} -eq 0 ]; then
+        set --
+    else
+        set -- "${new_args[@]}"
+    fi
+
     case "${1:-}" in
         --nodejs|--node|-n)
             runtime="nodejs"
@@ -753,6 +759,81 @@ handle_publish() {
     printf "📁 Zip file saved: ${CYAN}$output_dir/$zip_file${NC}\n"
 }
 
+# Handle completion command
+handle_completion() {
+    local shell="bash"
+    local show_help=false
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --zsh)
+                shell="zsh"
+                shift
+                ;;
+            --bash)
+                shell="bash"
+                shift
+                ;;
+            --help|-h)
+                show_help=true
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    if [ "$show_help" = true ]; then
+        printf "Usage: aws-lambda-layer completion [options]\n\n"
+        printf "Options:\n"
+        printf "  --zsh     Output zsh completion script\n"
+        printf "  --bash    Output bash completion script\n\n"
+        printf "Examples:\n"
+        printf "  # Load completion in current shell\n"
+        printf "  source <(aws-lambda-layer completion)\n\n"
+        printf "  # Add to .zshrc\n"
+        printf "  aws-lambda-layer completion >> ~/.zshrc\n"
+        return 0
+    fi
+    
+    # Find completion directory
+    # If running from source: ../completion
+    # If installed: $INSTALL_DIR/completion
+    local completion_dir=""
+    if [ -d "$SCRIPT_DIR/../completion" ]; then
+        completion_dir="$SCRIPT_DIR/../completion"
+    elif [ -d "$INSTALL_DIR/completion" ]; then
+        completion_dir="$INSTALL_DIR/completion"
+    else
+        printf "${RED}Error: Completion directory not found${NC}\n" >&2
+        return 1
+    fi
+    
+    if [ "$shell" = "zsh" ]; then
+        local file="$completion_dir/aws-lambda-layer-completion.zsh"
+        if [ -f "$file" ]; then
+            # Remove the auto-execution line if present
+            sed 's/_aws-lambda-layer "\$@"//g' "$file"
+            printf "\n# Register completion\n"
+            printf "if type compdef &>/dev/null; then\n"
+            printf "  compdef _aws-lambda-layer aws-lambda-layer\n"
+            printf "fi\n"
+        else
+            printf "${RED}Error: Completion script not found for zsh${NC}\n" >&2
+            return 1
+        fi
+    else
+        local file="$completion_dir/aws-lambda-layer-completion.bash"
+        if [ -f "$file" ]; then
+            cat "$file"
+        else
+            printf "${RED}Error: Completion script not found for bash${NC}\n" >&2
+            return 1
+        fi
+    fi
+}
+
 # Function to convert file paths for compatibility across environments
 convert_path() {
     local input_path="$1"
@@ -786,6 +867,25 @@ convert_path() {
     esac
 }
 
+# Handle uninstall
+handle_uninstall() {
+    local uninstall_script="$SCRIPT_DIR/uninstall.sh"
+    
+    # Check if uninstall script exists in script dir
+    if [ ! -f "$uninstall_script" ]; then
+        # Check install dir
+        uninstall_script="$INSTALL_DIR/uninstall.sh"
+    fi
+    
+    if [ -f "$uninstall_script" ]; then
+        exec "$uninstall_script" "$@"
+    else
+        printf "${RED}Error: Uninstall script not found${NC}\n" >&2
+        printf "Please run the uninstall script manually or remove the installation directory.\n" >&2
+        exit 1
+    fi
+}
+
 # Main command parsing
 main() {
     if [ $# -eq 0 ]; then
@@ -802,6 +902,14 @@ main() {
             shift
             handle_publish "$@"
             ;;
+        uninstall)
+            shift
+            handle_uninstall "$@"
+            ;;
+        completion)
+            shift
+            handle_completion "$@"
+            ;;
         help|--help|-h)
             show_help
             ;;
@@ -809,9 +917,9 @@ main() {
             show_version
             ;;
         *)
-            printf "${RED}Error: Unknown command '$1'${NC}\n"
-            printf "Available commands: zip, publish\n"
-            printf "Use --help for more information\n"
+            printf "${RED}Error: Unknown command '$1'${NC}\n" >&2
+            printf "Available commands: zip, publish\n" >&2
+            printf "Use --help for more information\n" >&2
             exit 1
             ;;
     esac

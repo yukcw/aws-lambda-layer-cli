@@ -17,7 +17,7 @@ A command-line tool for creating and publishing AWS Lambda layers for Node.js an
 
 ## Installation
 
-### Package managers (recommended)
+### Package Managers (Recommended)
 
 These installs do **not** write to `/usr/local` and do **not** require `sudo`.
 
@@ -25,28 +25,30 @@ These installs do **not** write to `/usr/local` and do **not** require `sudo`.
 
 ```bash
 npm i -g aws-lambda-layer-cli
-aws-lambda-layer --help
+aws-lambda-layer-cli --help
 ```
 
 #### pip (Python)
 
 ```bash
 python -m pip install --user aws-lambda-layer-cli
-aws-lambda-layer --help
+aws-lambda-layer-cli --help
 ```
 
 #### uv (Python)
 
 ```bash
 uv tool install aws-lambda-layer-cli
-aws-lambda-layer --help
+aws-lambda-layer-cli --help
 ```
 
-### Linux/macOS
+### Native Installation
+
+#### Linux/macOS
 
 ```bash
 # Clone or download the repository
-git clone <repository-url>
+git clone https://github.com/yukcw/aws-lambda-layer-cli.git
 cd aws-lambda-layer-cli
 
 # Run installation script (requires sudo)
@@ -54,13 +56,13 @@ sudo ./scripts/install.sh
 ```
 
 The installation will:
-- Copy scripts to `/usr/local/lib/aws-lambda-layer`
+- Copy scripts to `/usr/local/lib/aws-lambda-layer-cli`
 - Create a symlink in `/usr/local/bin` for global access
 - Install shell completions for bash and zsh
 
-### Windows
+#### Windows
 
-#### Option 1: PowerShell (Recommended)
+##### Option 1: PowerShell
 
 ```powershell
 # One-liner installation
@@ -78,11 +80,11 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yukcw/aws-lambda-layer
 ```
 
 This will:
-- Download the tool to `%USERPROFILE%\.aws-lambda-layer`
+- Download the tool to `%USERPROFILE%\.aws-lambda-layer-cli`
 - Add it to your PATH
 - Create Windows wrapper scripts
 
-#### Option 2: Manual Installation
+##### Option 2: Manual Installation
 
 1. Install prerequisites:
    - [Git for Windows](https://gitforwindows.org/) (includes Git Bash)
@@ -148,7 +150,7 @@ If you encounter issues:
    - Restart PowerShell/Command Prompt after installation
 
 2. **"No such file or directory"**
-   - Try running: `bash "$env:USERPROFILE\.aws-lambda-layer\aws-lambda-layer" --help`
+   - Try running: `bash "$env:USERPROFILE\.aws-lambda-layer-cli\aws-lambda-layer-cli" --help`
    - Or reinstall: `powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/yukcw/aws-lambda-layer-cli/main/scripts/install.ps1 | iex"`
 
 3. **Permission issues**

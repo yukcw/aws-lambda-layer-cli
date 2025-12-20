@@ -49,11 +49,73 @@ def main() -> None:
     else:
         assets_dir = Path(__file__).resolve().parent / "assets"
 
-    script_path = assets_dir / "aws-lambda-layer"
+    script_path = assets_dir / "aws-lambda-layer-cli"
     if not script_path.exists():
         raise SystemExit(f"Packaged script missing: {script_path}")
 
     args = sys.argv[1:]
+
+    # Handle uninstall command
+    if args and args[0] == "uninstall":
+        uninstall_script = assets_dir / "uninstall.sh"
+        if not uninstall_script.exists():
+            raise SystemExit(f"Uninstall script missing: {uninstall_script}")
+        
+        # Use the same execution logic as the main script, but pointing to uninstall.sh
+        script_path = uninstall_script
+        # Remove 'uninstall' from args
+        args = args[1:]
+
+    # Handle completion command
+    if args and args[0] == "completion":
+        if "--help" in args or "-h" in args:
+            print("Usage: aws-lambda-layer-cli completion [options]")
+            print("")
+            print("Options:")
+            print("  --zsh     Output zsh completion script")
+            print("  --bash    Output bash completion script")
+            print("")
+            print("Examples:")
+            print("  # Load completion in current shell")
+            print("  source <(aws-lambda-layer-cli completion)")
+            print("")
+            print("  # Add to .zshrc")
+            print("  aws-lambda-layer-cli completion >> ~/.zshrc")
+            raise SystemExit(0)
+
+        completion_dir = assets_dir.parent / "completion"
+        shell = "bash"
+        
+        # Detect shell or use flag
+        if "--zsh" in args or ("zsh" in os.environ.get("SHELL", "")):
+            shell = "zsh"
+        if "--bash" in args:
+            shell = "bash"
+            
+        if shell == "zsh":
+            file = completion_dir / "aws-lambda-layer-completion.zsh"
+            if file.exists():
+                content = file.read_text(encoding="utf-8")
+                # Remove the auto-execution line if present
+                import re
+                content = re.sub(r'_aws-lambda-layer-cli "\$@"\s*$', "", content)
+                print(content)
+                print("\n# Register completion")
+                print("if type compdef &>/dev/null; then")
+                print("  compdef _aws-lambda-layer-cli aws-lambda-layer-cli")
+                print("fi")
+            else:
+                print("Completion script not found for zsh", file=sys.stderr)
+                raise SystemExit(1)
+        else:
+            # bash
+            file = completion_dir / "aws-lambda-layer-completion.bash"
+            if file.exists():
+                print(file.read_text(encoding="utf-8"))
+            else:
+                print("Completion script not found for bash", file=sys.stderr)
+                raise SystemExit(1)
+        raise SystemExit(0)
 
     # POSIX
     if os.name != "nt":

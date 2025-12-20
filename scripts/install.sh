@@ -24,7 +24,11 @@ printf "${CYAN}${BOLD}Installing AWS Lambda Layer CLI Tool...${NC}\n"
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
     if command -v sudo &> /dev/null; then
-        printf "${YELLOW}Warning: Not running as root. Using sudo for installation.${NC}\n"
+        # Check if we need a password
+        if ! sudo -n true 2>/dev/null; then
+            printf "${YELLOW}This script requires root privileges to install to /usr/local/lib.${NC}\n"
+            printf "${YELLOW}Please enter your password if prompted.${NC}\n"
+        fi
         SUDO="sudo"
     else
         SUDO=""
@@ -36,7 +40,7 @@ fi
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-INSTALL_DIR="/usr/local/lib/aws-lambda-layer"
+INSTALL_DIR="/usr/local/lib/aws-lambda-layer-cli"
 BIN_DIR="/usr/local/bin"
 COMPLETION_DIR="/etc/bash_completion.d"
 
@@ -46,29 +50,36 @@ $SUDO mkdir -p "$INSTALL_DIR"
 
 # Copy scripts
 printf "${BLUE}Copying scripts...${NC}\n"
-$SUDO cp "$SCRIPT_DIR/aws-lambda-layer" "$INSTALL_DIR/"
+$SUDO cp "$SCRIPT_DIR/aws-lambda-layer-cli" "$INSTALL_DIR/"
 $SUDO cp "$SCRIPT_DIR/create_nodejs_layer.sh" "$INSTALL_DIR/"
 $SUDO cp "$SCRIPT_DIR/create_python_layer.sh" "$INSTALL_DIR/"
+$SUDO cp "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/"
 $SUDO cp "$BASE_DIR/VERSION.txt" "$INSTALL_DIR/"
+
+# Copy completion files for the CLI to use
+printf "${BLUE}Copying completion files...${NC}\n"
+$SUDO mkdir -p "$INSTALL_DIR/completion"
+$SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.bash" "$INSTALL_DIR/completion/"
+$SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.zsh" "$INSTALL_DIR/completion/"
 
 # Make scripts executable
 printf "${BLUE}Setting executable permissions...${NC}\n"
-$SUDO chmod +x "$INSTALL_DIR/aws-lambda-layer"
+$SUDO chmod +x "$INSTALL_DIR/aws-lambda-layer-cli"
 $SUDO chmod +x "$INSTALL_DIR/create_nodejs_layer.sh"
 $SUDO chmod +x "$INSTALL_DIR/create_python_layer.sh"
 
 # Create symlink in bin directory
 printf "${BLUE}Creating symlink in $BIN_DIR...${NC}\n"
-$SUDO ln -sf "$INSTALL_DIR/aws-lambda-layer" "$BIN_DIR/aws-lambda-layer"
+$SUDO ln -sf "$INSTALL_DIR/aws-lambda-layer-cli" "$BIN_DIR/aws-lambda-layer-cli"
 
 # Install bash completion
 printf "${BLUE}Installing bash completion...${NC}\n"
 if [ -d "$COMPLETION_DIR" ]; then
-    $SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.bash" "$COMPLETION_DIR/aws-lambda-layer"
+    $SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.bash" "$COMPLETION_DIR/aws-lambda-layer-cli"
     # Source the completion script
     if [ -f "$HOME/.bashrc" ]; then
-        if ! grep -q "aws-lambda-layer" "$HOME/.bashrc"; then
-            printf "\n# AWS Lambda Layer CLI completion\nsource $COMPLETION_DIR/aws-lambda-layer\n" >> "$HOME/.bashrc"
+        if ! grep -q "aws-lambda-layer-cli" "$HOME/.bashrc"; then
+            printf "\n# AWS Lambda Layer CLI completion\nsource $COMPLETION_DIR/aws-lambda-layer-cli\n" >> "$HOME/.bashrc"
         fi
     fi
     printf "${GREEN}Bash completion installed.${NC}\n"
@@ -92,14 +103,14 @@ else
 fi
 
 if [ -n "$ZSH_COMPLETION_DIR" ]; then
-    $SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.zsh" "$ZSH_COMPLETION_DIR/_aws-lambda-layer"
+    $SUDO cp "$BASE_DIR/completion/aws-lambda-layer-completion.zsh" "$ZSH_COMPLETION_DIR/_aws-lambda-layer-cli"
     printf "${GREEN}Zsh completion installed to: $ZSH_COMPLETION_DIR${NC}\n"
 fi
 
 printf "${GREEN}${BOLD}✅ Installation complete!${NC}\n\n"
 printf "${MAGENTA}${UNDERLINE}Usage examples:${NC}\n"
-printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} \"express@^4.0.0,lodash@~4.17.0\"\n"
-printf "  aws-lambda-layer ${GREEN}zip${NC} ${YELLOW}--python${NC} \"numpy==1.26.0,pandas>=2.1.0\"\n\n"
+printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} \"express@^4.0.0,lodash@~4.17.0\"\n"
+printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--python${NC} \"numpy==1.26.0,pandas>=2.1.0\"\n\n"
 printf "${YELLOW}To enable tab completion, restart your shell:${NC}\n"
 printf "  For bash: source ~/.bashrc\n"
 printf "  For zsh:  exec zsh\n\n"

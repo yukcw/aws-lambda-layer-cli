@@ -50,7 +50,76 @@ function run(cmd, args) {
 }
 
 const args = process.argv.slice(2);
-const bashScript = path.resolve(__dirname, '..', 'scripts', 'aws-lambda-layer');
+
+if (args[0] === 'completion') {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log('Usage: aws-lambda-layer-cli completion [options]');
+    console.log('');
+    console.log('Options:');
+    console.log('  --zsh     Output zsh completion script');
+    console.log('  --bash    Output bash completion script');
+    console.log('');
+    console.log('Examples:');
+    console.log('  # Load completion in current shell');
+    console.log('  source <(aws-lambda-layer-cli completion)');
+    console.log('');
+    console.log('  # Add to .zshrc');
+    console.log('  aws-lambda-layer-cli completion >> ~/.zshrc');
+    process.exit(0);
+  }
+
+  const completionDir = path.resolve(__dirname, '..', 'completion');
+  let shell = 'bash';
+
+  // Detect shell or use flag
+  if (args.includes('--zsh') || (process.env.SHELL && process.env.SHELL.includes('zsh'))) {
+    shell = 'zsh';
+  }
+  if (args.includes('--bash')) {
+    shell = 'bash';
+  }
+
+  if (shell === 'zsh') {
+    const file = path.join(completionDir, 'aws-lambda-layer-completion.zsh');
+    if (fs.existsSync(file)) {
+      let content = fs.readFileSync(file, 'utf8');
+      // Remove the auto-execution line if present, to make it safe for sourcing
+      content = content.replace(/_aws-lambda-layer-cli "\$@"\s*$/, '');
+      console.log(content);
+      console.log('\n# Register completion');
+      console.log('if type compdef &>/dev/null; then');
+      console.log('  compdef _aws-lambda-layer-cli aws-lambda-layer-cli');
+      console.log('fi');
+    } else {
+      console.error('Completion script not found for zsh');
+      process.exit(1);
+    }
+  } else {
+    // bash
+    const file = path.join(completionDir, 'aws-lambda-layer-completion.bash');
+    if (fs.existsSync(file)) {
+      console.log(fs.readFileSync(file, 'utf8'));
+    } else {
+      console.error('Completion script not found for bash');
+      process.exit(1);
+    }
+  }
+  process.exit(0);
+}
+
+if (args[0] === 'uninstall') {
+  const uninstallScript = path.resolve(__dirname, '..', 'scripts', 'uninstall.js');
+  if (fs.existsSync(uninstallScript)) {
+    require(uninstallScript);
+    // The script will handle exit
+  } else {
+    console.error('Uninstall script not found');
+    process.exit(1);
+  }
+  return;
+}
+
+const bashScript = path.resolve(__dirname, '..', 'scripts', 'aws-lambda-layer-cli');
 
 if (!fs.existsSync(bashScript)) {
   console.error('Error: packaged bash script not found:', bashScript);

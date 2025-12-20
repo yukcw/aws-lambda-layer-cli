@@ -7,7 +7,7 @@ Thank you for your interest in contributing! This guide will help you understand
 The project is structured to support multiple distribution methods (direct script usage, npm, and PyPI) while maintaining a single source of truth for the core logic.
 
 - **Core Scripts**: The main logic resides in the root directory:
-  - `aws-lambda-layer`: The main entry point script.
+  - `aws-lambda-layer-cli`: The main entry point script.
   - `create_nodejs_layer.sh`: Helper script for Node.js layers.
   - `create_python_layer.sh`: Helper script for Python layers.
 
@@ -16,14 +16,14 @@ The project is structured to support multiple distribution methods (direct scrip
   - `scripts/uninstall.sh` & `scripts/uninstall.ps1`: Uninstalls.
 
 - **Packaging**:
-  - **npm**: `package.json` and `bin/aws-lambda-layer.js` (wrapper).
+  - **npm**: `package.json` and `bin/aws-lambda-layer-cli.js` (wrapper).
   - **PyPI**: `pyproject.toml` and `scripts/pypi_resources/` (Python wrapper code).
 
 ## Development Workflow
 
 ### 1. Making Changes
 
-Modify the core scripts (`aws-lambda-layer`, `create_*.sh`) in the root directory. These changes will be picked up by all distribution methods.
+Modify the core scripts (`aws-lambda-layer-cli`, `create_*.sh`) in the root directory. These changes will be picked up by all distribution methods.
 
 ### 2. Building for npm (Node.js)
 
@@ -37,7 +37,7 @@ npm pack
 npm install -g aws-lambda-layer-cli-*.tgz
 
 # Verify installation
-aws-lambda-layer --version
+aws-lambda-layer-cli --version
 ```
 
 ### 3. Building for PyPI (Python)
@@ -70,7 +70,7 @@ source .venv/bin/activate
 pip install dist/aws_lambda_layer_cli-*.whl
 
 # Verify installation
-aws-lambda-layer --version
+aws-lambda-layer-cli --version
 ```
 
 ### 4. Testing Installers
