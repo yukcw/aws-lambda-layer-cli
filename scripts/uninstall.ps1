@@ -140,6 +140,26 @@ function Show-PostUninstall {
 function Main {
     Write-Header
 
+    # Check NPM
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        $npmList = npm list -g aws-lambda-layer-cli --depth=0 2>$null
+        if ($npmList -match "aws-lambda-layer-cli@") {
+            Write-ColorOutput "Detected NPM installation." $Yellow
+            Write-ColorOutput "Removing NPM package..." $White
+            npm uninstall -g aws-lambda-layer-cli
+        }
+    }
+
+    # Check PyPI
+    if (Get-Command pip -ErrorAction SilentlyContinue) {
+        pip show aws-lambda-layer-cli 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-ColorOutput "Detected PyPI installation." $Yellow
+            Write-ColorOutput "Removing PyPI package..." $White
+            pip uninstall -y aws-lambda-layer-cli
+        }
+    }
+
     # Check if tool is installed
     $isInstalled = Test-Installation
     if (-not $isInstalled) {

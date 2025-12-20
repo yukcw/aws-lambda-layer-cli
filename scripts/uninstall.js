@@ -8,6 +8,7 @@ try {
   const isWindows = os.platform() === 'win32';
   const scriptPath = isWindows ? path.join('scripts', 'uninstall.ps1') : path.join('scripts', 'uninstall.sh');
   const fullPath = path.join(__dirname, '..', scriptPath);
+  const args = process.argv.slice(2).map(arg => `"${arg}"`).join(' ');
 
   if (!fs.existsSync(fullPath)) {
     console.error(`Uninstallation script not found: ${fullPath}`);
@@ -16,7 +17,7 @@ try {
 
   if (isWindows) {
     // Run PowerShell script with proper execution policy
-    execSync(`powershell -ExecutionPolicy Bypass -File "${fullPath}"`, {
+    execSync(`powershell -ExecutionPolicy Bypass -File "${fullPath}" ${args}`, {
       stdio: 'inherit',
       shell: true
     });
@@ -28,12 +29,12 @@ try {
       console.log('This script requires root privileges to uninstall from /usr/local/lib.');
       console.log('Requesting sudo permissions...');
       // Run with sudo directly from node
-      execSync(`sudo bash "${fullPath}"`, {
+      execSync(`sudo bash "${fullPath}" ${args}`, {
         stdio: 'inherit'
       });
     } else {
       // Already root, just run it
-      execSync(`bash "${fullPath}"`, {
+      execSync(`bash "${fullPath}" ${args}`, {
         stdio: 'inherit'
       });
     }

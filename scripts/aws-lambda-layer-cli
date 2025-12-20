@@ -64,6 +64,7 @@ show_help() {
     printf "${BLUE}Commands:${NC}\n"
     printf "  ${GREEN}zip${NC}            Create and package a Lambda layer as zip file\n"
     printf "  ${GREEN}publish${NC}        Create and publish a Lambda layer to AWS (uses IAM credentials)\n"
+    printf "  ${GREEN}completion${NC}     Generate shell completion scripts\n"
     printf "  ${GREEN}uninstall${NC}      Uninstall the tool and remove all files\n"
     printf "  ${GREEN}help${NC}           Show this help message\n\n"
     
@@ -761,9 +762,13 @@ handle_publish() {
 
 # Handle completion command
 handle_completion() {
-    local shell="bash"
+    local shell=""
     local show_help=false
     
+    if [ $# -eq 0 ]; then
+        show_help=true
+    fi
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --zsh)
@@ -784,16 +789,17 @@ handle_completion() {
         esac
     done
     
-    if [ "$show_help" = true ]; then
-        printf "Usage: aws-lambda-layer completion [options]\n\n"
-        printf "Options:\n"
-        printf "  --zsh     Output zsh completion script\n"
-        printf "  --bash    Output bash completion script\n\n"
-        printf "Examples:\n"
+    if [ "$show_help" = true ] || [ -z "$shell" ]; then
+        printf "${BLUE}Usage:${NC}\n"
+        printf "  aws-lambda-layer-cli ${GREEN}completion${NC} [options]\n\n"
+        printf "${BLUE}Options:${NC}\n"
+        printf "  ${YELLOW}--zsh${NC}     Output zsh completion script\n"
+        printf "  ${YELLOW}--bash${NC}    Output bash completion script\n\n"
+        printf "${MAGENTA}${UNDERLINE}Examples:${NC}\n"
         printf "  # Load completion in current shell\n"
-        printf "  source <(aws-lambda-layer completion)\n\n"
+        printf "  source <(aws-lambda-layer-cli ${GREEN}completion${NC} ${YELLOW}--bash${NC})\n\n"
         printf "  # Add to .zshrc\n"
-        printf "  aws-lambda-layer completion >> ~/.zshrc\n"
+        printf "  aws-lambda-layer-cli ${GREEN}completion${NC} ${YELLOW}--zsh${NC} >> ~/.zshrc\n"
         return 0
     fi
     

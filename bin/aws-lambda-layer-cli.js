@@ -52,30 +52,39 @@ function run(cmd, args) {
 const args = process.argv.slice(2);
 
 if (args[0] === 'completion') {
-  if (args.includes('--help') || args.includes('-h')) {
-    console.log('Usage: aws-lambda-layer-cli completion [options]');
+  const hasZsh = args.includes('--zsh');
+  const hasBash = args.includes('--bash');
+  
+  if (args.includes('--help') || args.includes('-h') || (!hasZsh && !hasBash)) {
+    const GREEN = '\x1b[0;32m';
+    const YELLOW = '\x1b[0;33m';
+    const BLUE = '\x1b[0;34m';
+    const MAGENTA = '\x1b[0;35m';
+    const NC = '\x1b[0m';
+    const UNDERLINE = '\x1b[4m';
+
+    console.log(`${BLUE}Usage:${NC}`);
+    console.log(`  aws-lambda-layer-cli ${GREEN}completion${NC} [options]`);
     console.log('');
-    console.log('Options:');
-    console.log('  --zsh     Output zsh completion script');
-    console.log('  --bash    Output bash completion script');
+    console.log(`${BLUE}Options:${NC}`);
+    console.log(`  ${YELLOW}--zsh${NC}     Output zsh completion script`);
+    console.log(`  ${YELLOW}--bash${NC}    Output bash completion script`);
     console.log('');
-    console.log('Examples:');
+    console.log(`${MAGENTA}${UNDERLINE}Examples:${NC}`);
     console.log('  # Load completion in current shell');
-    console.log('  source <(aws-lambda-layer-cli completion)');
+    console.log(`  source <(aws-lambda-layer-cli ${GREEN}completion${NC} ${YELLOW}--bash${NC})`);
     console.log('');
     console.log('  # Add to .zshrc');
-    console.log('  aws-lambda-layer-cli completion >> ~/.zshrc');
+    console.log(`  aws-lambda-layer-cli ${GREEN}completion${NC} ${YELLOW}--zsh${NC} >> ~/.zshrc`);
     process.exit(0);
   }
 
   const completionDir = path.resolve(__dirname, '..', 'completion');
-  let shell = 'bash';
+  let shell = '';
 
-  // Detect shell or use flag
-  if (args.includes('--zsh') || (process.env.SHELL && process.env.SHELL.includes('zsh'))) {
+  if (hasZsh) {
     shell = 'zsh';
-  }
-  if (args.includes('--bash')) {
+  } else if (hasBash) {
     shell = 'bash';
   }
 
@@ -108,10 +117,26 @@ if (args[0] === 'completion') {
 }
 
 if (args[0] === 'uninstall') {
+  if (args.includes('--help') || args.includes('-h')) {
+    const GREEN = '\x1b[0;32m';
+    const BLUE = '\x1b[0;34m';
+    const NC = '\x1b[0m';
+    
+    console.log(`${BLUE}Usage:${NC}`);
+    console.log(`  aws-lambda-layer-cli ${GREEN}uninstall${NC}`);
+    console.log('');
+    console.log(`${BLUE}Description:${NC}`);
+    console.log('  Uninstalls the AWS Lambda Layer CLI tool and removes all associated files.');
+    console.log('  This includes:');
+    console.log('  - The CLI executable and symlinks');
+    console.log('  - The installation directory');
+    console.log('  - Shell completion scripts');
+    process.exit(0);
+  }
+
   const uninstallScript = path.resolve(__dirname, '..', 'scripts', 'uninstall.js');
   if (fs.existsSync(uninstallScript)) {
-    require(uninstallScript);
-    // The script will handle exit
+    run(process.execPath, [uninstallScript, ...args.slice(1)]);
   } else {
     console.error('Uninstall script not found');
     process.exit(1);

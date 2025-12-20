@@ -57,6 +57,22 @@ def main() -> None:
 
     # Handle uninstall command
     if args and args[0] == "uninstall":
+        if "--help" in args or "-h" in args:
+            GREEN = '\033[0;32m'
+            BLUE = '\033[0;34m'
+            NC = '\033[0m'
+            
+            print(f"{BLUE}Usage:{NC}")
+            print(f"  aws-lambda-layer-cli {GREEN}uninstall{NC}")
+            print("")
+            print(f"{BLUE}Description:{NC}")
+            print("  Uninstalls the AWS Lambda Layer CLI tool and removes all associated files.")
+            print("  This includes:")
+            print("  - The CLI executable and symlinks")
+            print("  - The installation directory")
+            print("  - Shell completion scripts")
+            raise SystemExit(0)
+
         uninstall_script = assets_dir / "uninstall.sh"
         if not uninstall_script.exists():
             raise SystemExit(f"Uninstall script missing: {uninstall_script}")
@@ -68,28 +84,38 @@ def main() -> None:
 
     # Handle completion command
     if args and args[0] == "completion":
-        if "--help" in args or "-h" in args:
-            print("Usage: aws-lambda-layer-cli completion [options]")
+        has_zsh = "--zsh" in args
+        has_bash = "--bash" in args
+        
+        if "--help" in args or "-h" in args or (not has_zsh and not has_bash):
+            GREEN = '\033[0;32m'
+            YELLOW = '\033[0;33m'
+            BLUE = '\033[0;34m'
+            MAGENTA = '\033[0;35m'
+            NC = '\033[0m'
+            UNDERLINE = '\033[4m'
+
+            print(f"{BLUE}Usage:{NC}")
+            print(f"  aws-lambda-layer-cli {GREEN}completion{NC} [options]")
             print("")
-            print("Options:")
-            print("  --zsh     Output zsh completion script")
-            print("  --bash    Output bash completion script")
+            print(f"{BLUE}Options:{NC}")
+            print(f"  {YELLOW}--zsh{NC}     Output zsh completion script")
+            print(f"  {YELLOW}--bash{NC}    Output bash completion script")
             print("")
-            print("Examples:")
+            print(f"{MAGENTA}{UNDERLINE}Examples:{NC}")
             print("  # Load completion in current shell")
-            print("  source <(aws-lambda-layer-cli completion)")
+            print(f"  source <(aws-lambda-layer-cli {GREEN}completion{NC} {YELLOW}--bash{NC})")
             print("")
             print("  # Add to .zshrc")
-            print("  aws-lambda-layer-cli completion >> ~/.zshrc")
+            print(f"  aws-lambda-layer-cli {GREEN}completion{NC} {YELLOW}--zsh{NC} >> ~/.zshrc")
             raise SystemExit(0)
 
         completion_dir = assets_dir.parent / "completion"
-        shell = "bash"
+        shell = ""
         
-        # Detect shell or use flag
-        if "--zsh" in args or ("zsh" in os.environ.get("SHELL", "")):
+        if has_zsh:
             shell = "zsh"
-        if "--bash" in args:
+        elif has_bash:
             shell = "bash"
             
         if shell == "zsh":
