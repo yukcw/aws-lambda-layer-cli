@@ -27,9 +27,12 @@ Modify the core scripts (`aws-lambda-layer-cli`, `create_*.sh`) in the root dire
 
 ### 2. Building for npm (Node.js)
 
-The npm package wraps the bash scripts.
+The npm package wraps the bash scripts. No separate build step is needed - just pack the package.
 
 ```bash
+# Sync version first (optional, runs automatically via prepare script)
+npm run sync-version
+
 # Create a tarball
 npm pack
 
@@ -39,6 +42,8 @@ npm install -g aws-lambda-layer-cli-*.tgz
 # Verify installation
 aws-lambda-layer-cli --version
 ```
+
+**Note**: The `prepare` script automatically runs `sync-version` before packing, so the manual sync step is optional.
 
 ### 3. Building for PyPI (Python)
 
@@ -107,5 +112,13 @@ sudo ./scripts/install.sh
 
 3. **npm Release**:
    ```bash
+   # Optional: Test the package locally first
+   npm pack
+   npm install -g aws-lambda-layer-cli-*.tgz
+   aws-lambda-layer-cli --version
+   
+   # Publish to npm (prepublishOnly script automatically syncs version)
    npm publish
    ```
+   
+   **Note**: The `prepublishOnly` script automatically runs `sync-version` before publishing.

@@ -44,7 +44,7 @@ if ([string]::IsNullOrEmpty($InstallDir)) {
 # Configuration
 $RepoUrl = "https://github.com/yukcw/aws-lambda-layer-cli"
 $ToolName = "aws-lambda-layer-cli"
-$Version = "1.4.1" # Fallback version
+$Version = "2.0.3" # Fallback version
 
 # Colors for output
 $Green = "Green"

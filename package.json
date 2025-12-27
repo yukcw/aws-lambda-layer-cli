@@ -1,6 +1,6 @@
 {
   "name": "aws-lambda-layer-cli",
-  "version": "2.0.1",
+  "version": "2.0.3",
   "description": "CLI tool for creating and publishing AWS Lambda layers for Node.js and Python.",
   "keywords": [
     "aws",
@@ -25,6 +25,7 @@
   "homepage": "https://github.com/yukcw/aws-lambda-layer-cli#readme",
   "scripts": {
     "sync-version": "node scripts/sync_version.js",
+    "prepare": "npm run sync-version",
     "prepublishOnly": "npm run sync-version",
     "postinstall": "node scripts/install.js",
     "preuninstall": "node scripts/uninstall.js"

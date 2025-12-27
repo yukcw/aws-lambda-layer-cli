@@ -52,7 +52,7 @@ if command -v pip &> /dev/null || command -v pip3 &> /dev/null; then
         $PIP_CMD uninstall -y aws-lambda-layer-cli
     fi
 fi
-
+aws-lambda-layer-cli --version
 # Check uv
 if command -v uv &> /dev/null; then
     if uv tool list | grep -q "aws-lambda-layer-cli"; then

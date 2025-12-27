@@ -47,7 +47,7 @@ COMPLETION_DIR="/etc/bash_completion.d"
 # Show help
 show_help() {
     local version_file="$SCRIPT_DIR/VERSION.txt"
-    local version="1.4.1"
+    local version="2.0.3"
     if [ -f "$version_file" ]; then
         version=$(cat "$version_file")
     fi
@@ -113,7 +113,7 @@ show_version() {
         echo "v$version"
     else
         # Fallback if VERSION file is missing (e.g. during development or if moved)
-        echo "v1.4.1"
+        echo "v2.0.3"
     fi
 }
 
@@ -233,7 +233,7 @@ get_aws_account_info() {
 # Determine compatible runtimes for AWS
 get_compatible_runtimes() {
     local runtime="$1"
-    local version="$2"
+    local version="2.0.3"
     
     case "$runtime" in
         nodejs)
