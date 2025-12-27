@@ -47,7 +47,7 @@ COMPLETION_DIR="/etc/bash_completion.d"
 # Show help
 show_help() {
     local version_file="$SCRIPT_DIR/VERSION.txt"
-    local version="2.0.3"
+    local version="2.0.4"
     if [ -f "$version_file" ]; then
         version=$(cat "$version_file")
     fi
@@ -113,7 +113,7 @@ show_version() {
         echo "v$version"
     else
         # Fallback if VERSION file is missing (e.g. during development or if moved)
-        echo "v2.0.3"
+        echo "v2.0.4"
     fi
 }
 
@@ -125,8 +125,26 @@ check_aws_cli() {
     
     if ! command -v aws &> /dev/null; then
         printf "${RED}Error: AWS CLI is not installed${NC}\n"
-        printf "Please install AWS CLI first:\n"
-        printf "  https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html\n"
+        printf "Please install AWS CLI:\n\n"
+        
+        # Detect OS and provide specific install command
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            printf "  ${GREEN}macOS:${NC}\n"
+            printf "    brew install awscli\n"
+            printf "    ${ITALIC}or${NC}\n"
+            printf "    curl \"https://awscli.amazonaws.com/AWSCLIV2.pkg\" -o \"AWSCLIV2.pkg\"\n"
+            printf "    sudo installer -pkg AWSCLIV2.pkg -target /\n\n"
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            printf "  ${GREEN}Linux:${NC}\n"
+            printf "    curl \"https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip\" -o \"awscliv2.zip\"\n"
+            printf "    unzip awscliv2.zip\n"
+            printf "    sudo ./aws/install\n\n"
+        elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+            printf "  ${GREEN}Windows:${NC}\n"
+            printf "    Download and run: https://awscli.amazonaws.com/AWSCLIV2.msi\n\n"
+        fi
+        
+        printf "  ${CYAN}More info:${NC} https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html\n"
         return 1
     fi
     
@@ -233,7 +251,7 @@ get_aws_account_info() {
 # Determine compatible runtimes for AWS
 get_compatible_runtimes() {
     local runtime="$1"
-    local version="2.0.3"
+    local version="2.0.4"
     
     case "$runtime" in
         nodejs)
@@ -256,7 +274,25 @@ check_dependencies() {
     # Check for zip
     if ! command -v zip &> /dev/null; then
         printf "${RED}Error: 'zip' command is not installed${NC}\n"
-        printf "Please install zip first.\n"
+        printf "Please install zip:\n\n"
+        
+        # Detect OS and provide specific install command
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            printf "  ${GREEN}macOS:${NC}\n"
+            printf "    brew install zip\n\n"
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            printf "  ${GREEN}Ubuntu/Debian:${NC}\n"
+            printf "    sudo apt-get update && sudo apt-get install -y zip\n\n"
+            printf "  ${GREEN}RHEL/CentOS/Fedora:${NC}\n"
+            printf "    sudo yum install -y zip\n\n"
+            printf "  ${GREEN}Alpine:${NC}\n"
+            printf "    apk add --no-cache zip\n\n"
+        elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+            printf "  ${GREEN}Windows:${NC}\n"
+            printf "    Use PowerShell: Install-Package -Name zip\n"
+            printf "    ${ITALIC}or install Git Bash which includes zip${NC}\n\n"
+        fi
+        
         return 1
     fi
     

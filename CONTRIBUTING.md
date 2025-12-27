@@ -92,6 +92,8 @@ sudo ./scripts/install.sh
 
 ## Release Process
 
+**Note**: Releases are managed by the project owner. If you need a new release, please contact [@yukcw](https://github.com/yukcw) or open an issue.
+
 1. Update version in `VERSION.txt`
 
 2. **PyPI Release**:
@@ -113,6 +115,7 @@ sudo ./scripts/install.sh
 3. **npm Release**:
    ```bash
    # Optional: Test the package locally first
+   npm run prepare
    npm pack
    npm install -g aws-lambda-layer-cli-*.tgz
    aws-lambda-layer-cli --version
