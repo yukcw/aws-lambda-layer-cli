@@ -21,6 +21,10 @@ PYTHON_VERSION_SPECIFIED=false
 VENV_DIR="python"
 USE_UV=true
 ORIGINAL_DIR=$(pwd)
+PLATFORM=""  # Optional platform targeting
+IMPLEMENTATION="cp"
+ABI=""
+ARCHITECTURE="x86_64"  # Default architecture
 
 # Colors for output
 RED='\033[0;31m'
@@ -137,6 +141,34 @@ while [[ $# -gt 0 ]]; do
             validate_python_version "$PYTHON_VERSION"
             shift
             ;;
+        --platform)
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+                PLATFORM="$2"
+                shift 2
+            else
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 manylinux_2_28_x86_64\n"
+                exit 1
+            fi
+            ;;
+        --platform=*)
+            PLATFORM="${1#*=}"
+            shift
+            ;;
+        -a|--architecture)
+            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+                ARCHITECTURE="$2"
+                shift 2
+            else
+                printf "${RED}Error: $1 requires an argument${NC}\n"
+                printf "Example: $1 arm64\n"
+                exit 1
+            fi
+            ;;
+        --architecture=*)
+            ARCHITECTURE="${1#*=}"
+            shift
+            ;;
         --no-uv)
             USE_UV=false
             shift
@@ -154,8 +186,18 @@ Options:
   -i, --packages        Comma-separated list of Python packages (with optional versions)
   -n, --name            Name of the output zip file
   --python-version      Python version (default: 3.14)
+  --platform            Target platform tag (optional, overrides architecture)
+  -a, --architecture    Target architecture (x86_64 or arm64, default: x86_64)
   --no-uv               Use pip/venv instead of uv
   -h, --help            Show this help message
+
+Supported Platforms (optional):
+  manylinux2014_x86_64    # Amazon Linux 2, RHEL 7+ (older)
+  manylinux2014_aarch64   # ARM64 architecture
+  manylinux_2_28_x86_64   # Amazon Linux 2023, RHEL 8+ (newer)
+  manylinux_2_28_aarch64  # ARM64 with newer glibc
+  linux_x86_64            # Generic Linux
+  linux_aarch64           # Generic ARM64 Linux
 
 Version Specification:
   Package versions can be specified using standard Python version specifiers:
@@ -167,9 +209,14 @@ Version Specification:
     Django!=3.2.0               # Version exclusion
 
 Examples:
+  # Basic usage
   ./create_python_layer.sh -i numpy==1.26.0
-  ./create_python_layer.sh -i requests==2.31.0,boto3==1.34.0 --python-version=3.14
-  ./create_python_layer.sh --packages=pandas==2.1.3,scikit-learn==1.3.0 --no-uv -n ml-layer.zip
+
+  # With platform targeting for Amazon Linux 2023
+  ./create_python_layer.sh -i requests==2.31.0,boto3==1.34.0 --python-version=3.13 --platform=manylinux_2_28_x86_64
+
+  # With platform targeting for ARM64
+  ./create_python_layer.sh --packages=pandas==2.1.3,scikit-learn==1.3.0 --platform=manylinux_2_28_aarch64 --no-uv -n ml-layer.zip
 EOF
             exit 0
             ;;
@@ -241,7 +288,11 @@ printf "${GREEN}Python Lambda Layer Creator${NC}\n"
 printf "${BLUE}=========================================${NC}\n"
 printf "Packages: $PACKAGES\n"
 printf "Python version: $PYTHON_VERSION\n"
+printf "Target Architecture: $AWS_ARCH\n"
 printf "Using UV: $USE_UV\n"
+if [ -n "$PLATFORM" ]; then
+    printf "Platform: $PLATFORM\n"
+fi
 if [ -n "$LAYER_NAME" ]; then
     printf "Output name: $LAYER_NAME\n"
 fi
@@ -307,16 +358,74 @@ set -u
 
 # Step 3: Install packages with versions
 printf "[3/7] Installing packages...\n"
+
+# Normalize Architecture
+AWS_ARCH="$ARCHITECTURE"
+if [ "$ARCHITECTURE" = "arm64" ]; then
+    ARCHITECTURE="aarch64"
+    AWS_ARCH="arm64"
+elif [ "$ARCHITECTURE" = "amd64" ]; then
+    ARCHITECTURE="x86_64"
+    AWS_ARCH="x86_64"
+elif [ "$ARCHITECTURE" = "x86_64" ]; then
+    AWS_ARCH="x86_64"
+elif [ "$ARCHITECTURE" = "aarch64" ]; then
+    AWS_ARCH="arm64"
+fi
+
+# Auto-detect platform if not specified
+if [ -z "$PLATFORM" ]; then
+    # Calculate major/minor version
+    # PYTHON_VERSION is like 3.14 or 3.14.2
+    PY_VER_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+    PY_VER_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+    
+    # Default to manylinux2014 (Amazon Linux 2)
+    PLATFORM_PREFIX="manylinux2014"
+    
+    # Check if Python version >= 3.12 for Amazon Linux 2023 (manylinux_2_28)
+    if [ "$PY_VER_MAJOR" -gt 3 ] || ([ "$PY_VER_MAJOR" -eq 3 ] && [ "$PY_VER_MINOR" -ge 12 ]); then
+        PLATFORM_PREFIX="manylinux_2_28"
+    fi
+    
+    PLATFORM="${PLATFORM_PREFIX}_${ARCHITECTURE}"
+    printf "Auto-detected platform: $PLATFORM (Python $PYTHON_VERSION, Arch $ARCHITECTURE)\n"
+fi
+
+# Prepare platform-specific options
+INSTALL_OPTS=()
+if [ -n "$PLATFORM" ]; then
+    # Calculate ABI tag based on Python version
+    PY_MAJOR_MINOR=$(echo "$PYTHON_VERSION" | sed 's/\([0-9]\+\)\.\([0-9]\+\).*/\1\2/')
+    ABI="cp${PY_MAJOR_MINOR}"
+    
+    INSTALL_OPTS+=("--platform" "$PLATFORM")
+    INSTALL_OPTS+=("--implementation" "$IMPLEMENTATION")
+    INSTALL_OPTS+=("--python-version" "$PYTHON_VERSION")
+    INSTALL_OPTS+=("--abi" "$ABI")
+    INSTALL_OPTS+=("--only-binary=:all:")
+    printf "  Using platform-specific installation: $PLATFORM\n"
+    printf "  ABI tag: $ABI\n"
+fi
+
 if [ "$USE_UV" = true ]; then
     printf "  Installing with UV...\n"
     # Convert to array for safe expansion
     IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
-    uv pip install "${PKG_ARRAY[@]}"
+    if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
+        uv pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}"
+    else
+        uv pip install "${PKG_ARRAY[@]}"
+    fi
 else
     printf "  Installing with pip...\n"
     # Convert to array for safe expansion
     IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
-    pip install "${PKG_ARRAY[@]}"
+    if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
+        pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}"
+    else
+        pip install "${PKG_ARRAY[@]}"
+    fi
 fi
 
 # Count packages from command argument
