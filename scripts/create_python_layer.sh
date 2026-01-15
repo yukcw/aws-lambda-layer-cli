@@ -283,6 +283,20 @@ if [ "$PACKAGES" != "$SANITIZED_PACKAGES" ]; then
     PACKAGES="$SANITIZED_PACKAGES"
 fi
 
+# Normalize Architecture
+AWS_ARCH="$ARCHITECTURE"
+if [ "$ARCHITECTURE" = "arm64" ]; then
+    ARCHITECTURE="aarch64"
+    AWS_ARCH="arm64"
+elif [ "$ARCHITECTURE" = "amd64" ]; then
+    ARCHITECTURE="x86_64"
+    AWS_ARCH="x86_64"
+elif [ "$ARCHITECTURE" = "x86_64" ]; then
+    AWS_ARCH="x86_64"
+elif [ "$ARCHITECTURE" = "aarch64" ]; then
+    AWS_ARCH="arm64"
+fi
+
 printf "${BLUE}=========================================${NC}\n"
 printf "${GREEN}Python Lambda Layer Creator${NC}\n"
 printf "${BLUE}=========================================${NC}\n"
@@ -358,20 +372,6 @@ set -u
 
 # Step 3: Install packages with versions
 printf "[3/7] Installing packages...\n"
-
-# Normalize Architecture
-AWS_ARCH="$ARCHITECTURE"
-if [ "$ARCHITECTURE" = "arm64" ]; then
-    ARCHITECTURE="aarch64"
-    AWS_ARCH="arm64"
-elif [ "$ARCHITECTURE" = "amd64" ]; then
-    ARCHITECTURE="x86_64"
-    AWS_ARCH="x86_64"
-elif [ "$ARCHITECTURE" = "x86_64" ]; then
-    AWS_ARCH="x86_64"
-elif [ "$ARCHITECTURE" = "aarch64" ]; then
-    AWS_ARCH="arm64"
-fi
 
 # Auto-detect platform if not specified
 if [ -z "$PLATFORM" ]; then
