@@ -78,6 +78,11 @@ ensure_test_role() {
         TEST_ROLE_ARN="$AWS_LAMBDA_ROLE_ARN"
         return 0
     fi
+
+    # If we already created/resolved it in this session (e.g. earlier test function)
+    if [ -n "${TEST_ROLE_ARN:-}" ]; then
+        return 0
+    fi
     
     # Otherwise, attempt to create a temporary role
     echo -e "${YELLOW}Creating temporary IAM Role $ROLE_NAME...${NC}" >&2

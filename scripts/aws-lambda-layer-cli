@@ -660,7 +660,8 @@ handle_publish() {
         fi
         
         # Extract Python version for compatible runtimes
-        local python_version=$(grep -o "Python: [0-9.]*" "build.log" | cut -d' ' -f2 | tail -1)
+        # Pattern matches "Python version: X.Y" or "Python Version: X.Y"
+        local python_version=$(grep -i "Python.*version: [0-9.]*" "build.log" | awk '{print $NF}' | tail -1)
         if [ -z "$python_version" ]; then
             python_version="3.14"
         fi

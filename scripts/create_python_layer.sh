@@ -359,10 +359,9 @@ if [ -z "$PLATFORM" ]; then
     # Default to manylinux2014 (Amazon Linux 2)
     PLATFORM_PREFIX="manylinux2014"
     
-    # Check if Python version >= 3.12 for Amazon Linux 2023 (manylinux_2_28)
-    if [ "$PY_VER_MAJOR" -gt 3 ] || ([ "$PY_VER_MAJOR" -eq 3 ] && [ "$PY_VER_MINOR" -ge 12 ]); then
-        PLATFORM_PREFIX="manylinux_2_28"
-    fi
+    # Legacy: We previously checked for AL2023 (manylinux_2_28) here, but forcing it
+    # causes issues with packages like NumPy that publish manylinux2014 or manylinux_2_17 wheels.
+    # Since AL2023 is backward compatible with manylinux2014, we stick to that for max compatibility.
     
     PLATFORM="${PLATFORM_PREFIX}_${ARCHITECTURE}"
     printf "Auto-detected platform: $PLATFORM (Python $PYTHON_VERSION, Arch $ARCHITECTURE)\n"
@@ -371,9 +370,11 @@ fi
 # Prepare platform-specific options
 INSTALL_OPTS=()
 if [ -n "$PLATFORM" ]; then
-    # Calculate ABI tag based on Python version
-    PY_MAJOR_MINOR=$(echo "$PYTHON_VERSION" | sed 's/\([0-9]\+\)\.\([0-9]\+\).*/\1\2/')
-    ABI="cp${PY_MAJOR_MINOR}"
+    # Calculate ABI tag based on Python version (e.g., 3.12 -> cp312)
+    # We use cut instead of potentially fragile regex
+    PY_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+    PY_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+    ABI="cp${PY_MAJOR}${PY_MINOR}"
     
     INSTALL_OPTS+=("--platform" "$PLATFORM")
     INSTALL_OPTS+=("--implementation" "$IMPLEMENTATION")
@@ -388,7 +389,11 @@ printf "  Installing with pip...\n"
 # Convert to array for safe expansion
 IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
 if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
-    pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}"
+    # When using platform specific options, we must specify --target
+    # We use the site-packages directory of the current venv
+    SITE_PACKAGES=$(python -c "import site; print(site.getsitepackages()[0])")
+    printf "  Targeting site-packages: $SITE_PACKAGES\n"
+    pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}" --target "$SITE_PACKAGES"
 else
     pip install "${PKG_ARRAY[@]}"
 fi
