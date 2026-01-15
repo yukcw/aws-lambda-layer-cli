@@ -85,7 +85,8 @@ show_help() {
     printf "  ${YELLOW}--version, -v${NC}           Show tool version information\n"
     printf "  ${YELLOW}--node-version${NC}          Node.js version (default: 24)\n"
     printf "  ${YELLOW}--python-version${NC}        Python version (default: 3.14)\n"
-    printf "  ${YELLOW}--no-uv${NC}                 Use pip/venv instead of uv\n\n"
+    printf "  ${YELLOW}--architecture, -a${NC}      Target architecture (x86_64, arm64)\n"
+    printf "  ${YELLOW}--platform${NC}              Target platform tag (Python only)\n\n"
     
     printf "${MAGENTA}${UNDERLINE}Package Version Examples:${NC}\n"
     printf "  Node.js:    express@^4.0.0, lodash@~4.17.0, axios@>=1.6.0\n"
@@ -659,17 +660,11 @@ handle_publish() {
         fi
         
         # Extract Python version for compatible runtimes
-        local python_version=$(grep -o "Python version: [0-9.]*" "build.log" | cut -d' ' -f3 | tail -1)
+        local python_version=$(grep -o "Python: [0-9.]*" "build.log" | cut -d' ' -f2 | tail -1)
         if [ -z "$python_version" ]; then
             python_version="3.14"
         fi
         local compatible_runtimes="python${python_version}"
-        
-        # Extract Architecture
-        local compatible_architectures=$(grep -o "Target Architecture: [a-zA-Z0-9_]*" "build.log" | cut -d' ' -f3 | tail -1)
-        if [ -z "$compatible_architectures" ]; then
-            compatible_architectures="x86_64"
-        fi
     fi
     
     # Check if zip file was created
@@ -684,10 +679,6 @@ handle_publish() {
     local packages_info=""
     if [ "$runtime" = "nodejs" ]; then
         packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
-        # Default architecture for Node.js if not parsed (assuming both x86_64 and arm64 as Node.js is usually arch-independent)
-        if [ -z "${compatible_architectures:-}" ]; then
-             compatible_architectures="x86_64 arm64"
-        fi
     elif [ "$runtime" = "python" ]; then
         packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
     fi
@@ -723,7 +714,6 @@ handle_publish() {
     printf "  Layer name: ${GREEN}$layer_name${NC}\n"
     printf "  Description: ${GREEN}$final_description${NC}\n"
     printf "  Compatible runtimes: ${GREEN}$compatible_runtimes${NC}\n"
-    printf "  Compatible architectures: ${GREEN}$compatible_architectures${NC}\n"
     printf "  Zip file: ${GREEN}$zip_file${NC}\n\n"
     
     # Confirm publish
@@ -759,17 +749,14 @@ handle_publish() {
     printf "  --layer-name \"$layer_name\"\n"
     printf "  --description \"$final_description\"\n"
     printf "  --zip-file \"fileb://$(convert_path "$current_dir/$output_dir/$zip_file")\"\n"
-    printf "  --compatible-runtimes \"$compatible_runtimes\"\n"
-    printf "  --compatible-architectures $compatible_architectures\n\n"
+    printf "  --compatible-runtimes \"$compatible_runtimes\"\n\n"
     
     # Run AWS CLI command and capture output and exit code
-    # Note: compatible_architectures is unquoted to allow multiple arguments (e.g. x86_64 arm64)
     aws ${publish_aws_opts[@]+"${publish_aws_opts[@]}"} lambda publish-layer-version \
         --layer-name "$layer_name" \
         --description "$final_description" \
         --zip-file "fileb://$(convert_path "$current_dir/$output_dir/$zip_file")" \
         --compatible-runtimes "$compatible_runtimes" \
-        --compatible-architectures $compatible_architectures \
         --query '[LayerVersionArn, Version, Description]' \
         --output table 2>&1 | tee publish.log
     

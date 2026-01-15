@@ -85,7 +85,8 @@ show_help() {
     printf "  ${YELLOW}--version, -v${NC}           Show tool version information\n"
     printf "  ${YELLOW}--node-version${NC}          Node.js version (default: 24)\n"
     printf "  ${YELLOW}--python-version${NC}        Python version (default: 3.14)\n"
-    printf "  ${YELLOW}--no-uv${NC}                 Use pip/venv instead of uv\n\n"
+    printf "  ${YELLOW}--architecture, -a${NC}      Target architecture (x86_64, arm64)\n"
+    printf "  ${YELLOW}--platform${NC}              Target platform tag (Python only)\n\n"
     
     printf "${MAGENTA}${UNDERLINE}Package Version Examples:${NC}\n"
     printf "  Node.js:    express@^4.0.0, lodash@~4.17.0, axios@>=1.6.0\n"

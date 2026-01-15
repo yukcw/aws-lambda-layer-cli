@@ -4,7 +4,7 @@ A command-line tool for creating and publishing AWS Lambda layers for Node.js an
 
 ## Features
 
-- Create and publish Lambda layers for Node.js (npm) and Python (uv/pip)
+- Create and publish Lambda layers for Node.js (npm) and Python (pip)
 - Automatic version management and smart naming
 - Direct publishing to AWS with IAM credentials and region support
 - Support for multiple packages in a single layer
@@ -50,9 +50,10 @@ aws-lambda-layer-cli <command> [options]
 | `--description` | Layer description (publish only) |
 | `--profile` | AWS CLI profile (publish only) |
 | `--region` | AWS region (publish only) |
+| `--architecture, -a` | Target architecture (`x86_64` or `arm64`) |
+| `--platform` | Target platform tag (Python only, e.g. `manylinux_2_28_aarch64`) |
 | `--node-version` | Node.js version (default: 24) |
 | `--python-version` | Python version (default: 3.14) |
-| `--no-uv` | Use pip/venv instead of uv |
 | `-v, --version` | Show version |
 
 ## Examples
@@ -68,11 +69,11 @@ aws-lambda-layer-cli publish --nodejs lodash --profile prod --region us-east-1 -
 
 ### Python
 ```bash
-# Create local zip with specific python version
-aws-lambda-layer-cli zip --python numpy==1.26.0,pandas --python-version 3.12
+# Create local zip with specific python version and architecture
+aws-lambda-layer-cli zip --python numpy==1.26.0,pandas --python-version 3.12 --architecture arm64
 
-# Publish to AWS
-aws-lambda-layer-cli publish --python requests --name web-layer
+# Publish to AWS with explicit platform tag (e.g. Amazon Linux 2023 / manylinux_2_28)
+aws-lambda-layer-cli publish --python requests --name web-layer --platform manylinux_2_28_x86_64
 ```
 
 ## Shell Completion

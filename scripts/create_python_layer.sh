@@ -19,7 +19,6 @@ LAYER_NAME=""
 PYTHON_VERSION="3.14"  # Default to Python 3.14
 PYTHON_VERSION_SPECIFIED=false
 VENV_DIR="python"
-USE_UV=true
 ORIGINAL_DIR=$(pwd)
 PLATFORM=""  # Optional platform targeting
 IMPLEMENTATION="cp"
@@ -169,18 +168,13 @@ while [[ $# -gt 0 ]]; do
             ARCHITECTURE="${1#*=}"
             shift
             ;;
-        --no-uv)
-            USE_UV=false
-            shift
-            ;;
         -h|--help)
             cat << 'EOF'
-Python Lambda Layer Creator with UV
+Python Lambda Layer Creator
 
 Usage:
   ./create_python_layer.sh -i numpy==1.26.0,pandas==2.1.3
   ./create_python_layer.sh --packages=numpy==1.26.0,pandas,boto3==1.34.0 -n my-layer.zip
-  ./create_python_layer.sh -i flask==3.0.0 --no-uv
 
 Options:
   -i, --packages        Comma-separated list of Python packages (with optional versions)
@@ -188,7 +182,6 @@ Options:
   --python-version      Python version (default: 3.14)
   --platform            Target platform tag (optional, overrides architecture)
   -a, --architecture    Target architecture (x86_64 or arm64, default: x86_64)
-  --no-uv               Use pip/venv instead of uv
   -h, --help            Show this help message
 
 Supported Platforms (optional):
@@ -216,7 +209,7 @@ Examples:
   ./create_python_layer.sh -i requests==2.31.0,boto3==1.34.0 --python-version=3.13 --platform=manylinux_2_28_x86_64
 
   # With platform targeting for ARM64
-  ./create_python_layer.sh --packages=pandas==2.1.3,scikit-learn==1.3.0 --platform=manylinux_2_28_aarch64 --no-uv -n ml-layer.zip
+  ./create_python_layer.sh --packages=pandas==2.1.3,scikit-learn==1.3.0 --platform=manylinux_2_28_aarch64 -n ml-layer.zip
 EOF
             exit 0
             ;;
@@ -234,14 +227,6 @@ if [ -z "$PACKAGES" ]; then
     printf "Use -i or --packages to specify packages (comma-separated)\n"
     printf "Example: ./create_python_layer.sh -i numpy==1.26.0,requests\n"
     exit 1
-fi
-
-# Check if uv is available safely
-if [ "$USE_UV" = true ]; then
-    if ! command -v uv >/dev/null 2>&1; then
-        printf "${YELLOW}Warning: uv not found, falling back to pip/venv${NC}\n"
-        USE_UV=false
-    fi
 fi
 
 # Check dependencies
@@ -303,7 +288,6 @@ printf "${BLUE}=========================================${NC}\n"
 printf "Packages: $PACKAGES\n"
 printf "Python version: $PYTHON_VERSION\n"
 printf "Target Architecture: $AWS_ARCH\n"
-printf "Using UV: $USE_UV\n"
 if [ -n "$PLATFORM" ]; then
     printf "Platform: $PLATFORM\n"
 fi
@@ -342,20 +326,12 @@ if ! command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
     fi
 fi
 
-if [ "$USE_UV" = true ]; then
-    printf "  Using UV to create venv...\n"
-    if ! uv venv --python "$TARGET_PYTHON" "$VENV_DIR"; then
-         printf "${RED}Error: Failed to create venv with uv${NC}\n"
-         exit 1
-    fi
+printf "  Using venv module...\n"
+if command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
+    "$TARGET_PYTHON" -m venv "$VENV_DIR"
 else
-    printf "  Using venv module...\n"
-    if command -v "$TARGET_PYTHON" >/dev/null 2>&1; then
-        "$TARGET_PYTHON" -m venv "$VENV_DIR"
-    else
-        printf "${RED}Error: $TARGET_PYTHON not found${NC}\n"
-        exit 1
-    fi
+    printf "${RED}Error: $TARGET_PYTHON not found${NC}\n"
+    exit 1
 fi
 
 # Activate virtual environment
@@ -408,24 +384,13 @@ if [ -n "$PLATFORM" ]; then
     printf "  ABI tag: $ABI\n"
 fi
 
-if [ "$USE_UV" = true ]; then
-    printf "  Installing with UV...\n"
-    # Convert to array for safe expansion
-    IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
-    if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
-        uv pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}"
-    else
-        uv pip install "${PKG_ARRAY[@]}"
-    fi
+printf "  Installing with pip...\n"
+# Convert to array for safe expansion
+IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
+if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
+    pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}"
 else
-    printf "  Installing with pip...\n"
-    # Convert to array for safe expansion
-    IFS=',' read -ra PKG_ARRAY <<< "$PACKAGES"
-    if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
-        pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}"
-    else
-        pip install "${PKG_ARRAY[@]}"
-    fi
+    pip install "${PKG_ARRAY[@]}"
 fi
 
 # Count packages from command argument
@@ -442,11 +407,7 @@ if [ -z "$LAYER_NAME" ]; then
         printf "  Single package: $PKG_NAME\n"
         
         # Extract version from installed package
-        if [ "$USE_UV" = true ]; then
-            PKG_INFO=$(uv pip show "$PKG_NAME" 2>/dev/null || true)
-        else
-            PKG_INFO=$(pip show "$PKG_NAME" 2>/dev/null || true)
-        fi
+        PKG_INFO=$(pip show "$PKG_NAME" 2>/dev/null || true)
         
         if [ -n "$PKG_INFO" ]; then
             # Use safer extraction methods
@@ -509,11 +470,7 @@ fi
 
 # Step 5: Show installed packages
 printf "[5/7] Listing installed packages...\n"
-if [ "$USE_UV" = true ]; then
-    uv pip list --format freeze
-else
-    pip list --format freeze
-fi
+pip list --format freeze
 
 # Deactivate virtual environment
 set +u
@@ -542,7 +499,7 @@ printf "${GREEN}✅ SUCCESS: Python Lambda Layer Created${NC}\n"
 printf "${BLUE}=========================================${NC}\n"
 printf "📁 File: $ORIGINAL_DIR/$LAYER_NAME\n"
 printf "🐍 Python Version: $PYTHON_VERSION\n"
-printf "⚡ Tool: $(if [ "$USE_UV" = true ]; then echo "UV"; else echo "pip/venv"; fi)\n"
+printf "⚡ Tool: pip/venv\n"
 printf "📦 Size: $(du -h "$ORIGINAL_DIR/$LAYER_NAME" | cut -f1)\n"
 printf "📊 Package Count: $PACKAGE_COUNT\n"
 
@@ -555,11 +512,7 @@ for pkg_full in "${PKG_ARRAY[@]}"; do
     pkg_name=$(extract_package_name "$pkg_full")
     
     # Get installed version from pip show or metadata
-    if [ "$USE_UV" = true ]; then
-        installed_ver=$(find . -type f -name "METADATA" -path "*/${pkg_name}-*.dist-info/METADATA" -exec grep -h "^Version:" {} \; | head -1 | cut -d' ' -f2)
-    else
-        installed_ver=$(find . -type f -name "METADATA" -path "*/${pkg_name}-*.dist-info/METADATA" -exec grep -h "^Version:" {} \; | head -1 | cut -d' ' -f2)
-    fi
+    installed_ver=$(find . -type f -name "METADATA" -path "*/${pkg_name}-*.dist-info/METADATA" -exec grep -h "^Version:" {} \; | head -1 | cut -d' ' -f2)
     
     if [ -n "$installed_ver" ]; then
         if [ -n "$INSTALLED_PKGS" ]; then
