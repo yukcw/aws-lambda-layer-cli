@@ -4,10 +4,10 @@ A command-line tool for creating and publishing AWS Lambda layers for Node.js an
 
 ## Features
 
-- Create and publish Lambda layers for Node.js (npm) and Python (pip)
-- Automatic version management and smart naming
-- Direct publishing to AWS with IAM credentials and region support
-- Support for multiple packages in a single layer
+- **Effortless Publishing**: Create and publish Node.js and Python layers in a single command
+- **Smart Compatibility**: Auto-selects the right Linux binaries for Amazon Linux 2 or 2023
+- **Cross-Architecture**: Native support for `x86_64` and `arm64` builds
+- **Auto-Versioning**: Automatically handles layer naming and version increments
 
 ## Installation
 
@@ -75,6 +75,9 @@ aws-lambda-layer-cli zip --python numpy==1.26.0,pandas --python-version 3.12 --a
 # Publish to AWS for ARM64 architecture
 aws-lambda-layer-cli publish --python requests --name web-layer --architecture arm64
 ```
+> **Note**: This tool automatically selects the optimal platform based on the Python version:
+> - **Python 3.12+ (Amazon Linux 2023)**: Targets `manylinux_2_28` (GLIBC 2.28+)
+> - **Python 3.11- (Amazon Linux 2)**: Targets `manylinux2014` (GLIBC 2.17+)
 
 ### Wheel File
 The tool auto-detects Python version and architecture from the wheel filename.

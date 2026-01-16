@@ -333,12 +333,18 @@ if [ -z "$PLATFORM" ]; then
     PY_VER_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
     PY_VER_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
     
-    # Default to manylinux2014 (Amazon Linux 2)
-    PLATFORM_PREFIX="manylinux2014"
-    
-    # Legacy: We previously checked for AL2023 (manylinux_2_28) here, but forcing it
-    # causes issues with packages like NumPy that publish manylinux2014 or manylinux_2_17 wheels.
-    # Since AL2023 is backward compatible with manylinux2014, we stick to that for max compatibility.
+    # Platform selection based on AWS Lambda Runtime
+    if [ "$PY_VER_MAJOR" -eq 3 ] && [ "$PY_VER_MINOR" -ge 12 ]; then
+        # Python 3.12+ runs on Amazon Linux 2023 (GLIBC 2.34)
+        # We use manylinux_2_28 (GLIBC 2.28) which is well-supported
+        PLATFORM_PREFIX="manylinux_2_28"
+        printf "  Targeting Amazon Linux 2023 (Python $PYTHON_VERSION)\n"
+    else
+        # Python 3.11- runs on Amazon Linux 2 (GLIBC 2.26)
+        # We use manylinux2014 (GLIBC 2.17) for max compatibility
+        PLATFORM_PREFIX="manylinux2014"
+        printf "  Targeting Amazon Linux 2 (Python $PYTHON_VERSION)\n"
+    fi
     
     PLATFORM="${PLATFORM_PREFIX}_${ARCHITECTURE}"
     printf "Auto-detected platform: $PLATFORM (Python $PYTHON_VERSION, Arch $ARCHITECTURE)\n"

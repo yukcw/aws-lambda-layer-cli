@@ -4,7 +4,8 @@
 # Scenarios:
 # 1. Publish from Wheel (Success case)
 # 2. Deploy to Mismatched Runtime (Failure case)
-# 3. Publish from Pip (Success case)
+# 3. Deploy to Mismatched Architecture (Failure case)
+# 4. Publish from Pip (Success case - Standard Package Name)
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 # Override CLI_TOOL to point to the script we are editing
@@ -38,6 +39,13 @@ for w in wheels:
 download_wheel() {
     local url=$1
     local dest_name=${url##*/}
+    
+    # Check cache first
+    local cache_path="$REPO_ROOT/test/wheels/$dest_name"
+    if [ -f "$cache_path" ]; then
+        cp "$cache_path" "$WHEEL_DIR/$dest_name"
+    fi
+
     if [ ! -f "$WHEEL_DIR/$dest_name" ]; then
         >&2 echo "Downloading $dest_name..."
         curl -L -s -o "$WHEEL_DIR/$dest_name" "$url"
@@ -205,7 +213,7 @@ FUNC_NAME_3="test-func-arch-fail-$RUN_ID"
 echo "Creating Function (Python 3.13, arm64)..."
 
 # Ensure we log the command
-printf "${BLUE}Running: aws lambda create-function --function-name $FUNC_NAME_3 --runtime python3.13 --role ... --layers $LAYER_ARN_1 --architectures arm64${NC}"
+printf "${BLUE}Running: aws lambda create-function --function-name $FUNC_NAME_3 --runtime python3.13 --role ... --layers $LAYER_ARN_1 --architectures arm64${NC}\n"
 
 aws lambda create-function \
     --function-name "$FUNC_NAME_3" \
@@ -221,7 +229,7 @@ add_cleanup "aws lambda delete-function --function-name $FUNC_NAME_3"
 echo "Waiting for function active..."
 sleep 5
 echo "Invoking..."
-printf "${BLUE}Running: aws lambda invoke --function-name $FUNC_NAME_3 ...${NC}"
+printf "${BLUE}Running: aws lambda invoke --function-name $FUNC_NAME_3 ...${NC}\n"
 
 aws lambda invoke \
     --function-name "$FUNC_NAME_3" \
@@ -236,6 +244,64 @@ if grep -q "errorMessage" "$TEST_DIR/invoke3.json"; then
 else
     echo -e "${RED}FAILURE: Scenario 3 (Function unexpectedly succeeded or returned invalid response)${NC}"
     cat "$TEST_DIR/invoke3.json"
+fi
+
+# ------------------------------------------------------------------
+# Scenario 4: Publish from Pip (Standard Package Name)
+# ------------------------------------------------------------------
+echo ""
+echo "=== Scenario 4: Publish from Pip (numpy==2.4.1) ==="
+LAYER_NAME_4="test-cli-pip-$RUN_ID"
+
+echo "Publishing Layer..."
+yes | "$CLI_TOOL" publish \
+    --python "numpy==2.4.1" \
+    --name "$LAYER_NAME_4" \
+    --description "Test Layer from Pip" \
+    --python-version 3.12 \
+    --architecture x86_64 > "$TEST_DIR/pub4.log" 2>&1
+
+res=$?
+if [ $res -ne 0 ]; then
+    echo -e "${RED}Publish Failed${NC}"
+    cat "$TEST_DIR/pub4.log"
+    exit 1
+fi
+
+LAYER_ARN_4=$(grep -o "arn:aws:lambda:[^:]*:[0-9]*:layer:$LAYER_NAME_4:[0-9]*" "$TEST_DIR/pub4.log" | tail -1)
+echo "Layer ARN: $LAYER_ARN_4"
+add_cleanup "aws lambda delete-layer-version --layer-name $LAYER_NAME_4 --version-number ${LAYER_ARN_4##*:}"
+
+# Create Function (Python 3.12)
+FUNC_NAME_4="test-func-pip-$RUN_ID"
+echo "Creating Function (Python 3.12)..."
+
+aws lambda create-function \
+    --function-name "$FUNC_NAME_4" \
+    --runtime python3.12 \
+    --role "$TEST_ROLE_ARN" \
+    --handler lambda_function.lambda_handler \
+    --zip-file "fileb://$TEST_DIR/function.zip" \
+    --layers "$LAYER_ARN_4" \
+    --architectures x86_64 > /dev/null
+
+add_cleanup "aws lambda delete-function --function-name $FUNC_NAME_4"
+
+echo "Waiting for function active..."
+sleep 5
+echo "Invoking..."
+aws lambda invoke \
+    --function-name "$FUNC_NAME_4" \
+    --cli-binary-format raw-in-base64-out \
+    --payload '{}' \
+    "$TEST_DIR/invoke4.json" > /dev/null
+
+if grep -q "Numpy Version: 2.4.1" "$TEST_DIR/invoke4.json"; then
+    echo -e "${GREEN}SUCCESS: Scenario 4 passed (Imported Numpy 2.4.1)${NC}"
+else
+    echo -e "${RED}FAILURE: Scenario 4 failed${NC}"
+    cat "$TEST_DIR/invoke4.json"
+    exit 1
 fi
 
 echo ""

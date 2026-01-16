@@ -38,6 +38,13 @@ for w in wheels:
 download_wheel() {
     local url=$1
     local dest_name=${url##*/}
+    
+    # Check cache first
+    local cache_path="$REPO_ROOT/test/wheels/$dest_name"
+    if [ -f "$cache_path" ]; then
+        cp "$cache_path" "$WHEEL_DIR/$dest_name"
+    fi
+
     if [ ! -f "$WHEEL_DIR/$dest_name" ]; then
         >&2 echo -e "${BLUE}Downloading $dest_name...${NC}"
         if command -v curl &> /dev/null; then
@@ -124,7 +131,7 @@ LAYER_ZIP="$TEST_DIR/numpy_layer.zip"
 echo -n "Building Valid Layer... "
 
 set +e
-bash "$CLI_TOOL" -w "$LINUX_WHEEL" -n "$LAYER_ZIP" -a x86_64 --python-version 3.13 --platform manylinux_2_27_x86_64 > "$TEST_DIR/build_out.log" 2>&1
+bash "$CLI_TOOL" -w "$LINUX_WHEEL" -n "$LAYER_ZIP" -a x86_64 --python-version 3.13 > "$TEST_DIR/build_out.log" 2>&1
 res=$?
 set -e
 

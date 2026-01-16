@@ -73,6 +73,7 @@ run_test_case() {
     local expected=$3 # PASS or FAIL
     local extracted_tag=$4
     local case_description=$5
+    local py_ver=${6:-"3.12"}
 
     # Generate dummy wheel if not exists
     if [ ! -f "$WHEEL_DIR/$filename" ]; then
@@ -86,7 +87,7 @@ run_test_case() {
     bash "$CLI_TOOL" \
         -w "$WHEEL_DIR/$filename" \
         -a "$target_arch" \
-        --python-version 3.12 > "$output_file" 2>&1
+        --python-version "$py_ver" > "$output_file" 2>&1
     local exit_code=$?
     set -e
 
@@ -102,29 +103,49 @@ run_test_case() {
         valid_failed=1
         failure_reason="ARCH_MISMATCH"
     fi
+    if grep -q "Error: Wheel is for .* but you requested" "$output_file"; then
+        valid_failed=1
+        failure_reason="STRICT_ARCH_MISMATCH"
+    fi
 
-    local result_str=""
     local feature_note=""
+    local color_start=""
+    local color_end=""
+    local result_text=""
 
     if [ "$expected" == "FAIL" ]; then
         if [ $valid_failed -eq 1 ]; then
-            result_str="${GREEN}PASS (Rejected)${NC}"
+            color_start="${GREEN}"
+            color_end="${NC}"
+            result_text="PASS (Rejected)"
             if [ "$failure_reason" == "OS_INCOMPATIBLE" ]; then feature_note="F1, F4"; fi
             if [ "$failure_reason" == "ARCH_MISMATCH" ]; then feature_note="F2"; fi
+            if [ "$failure_reason" == "STRICT_ARCH_MISMATCH" ]; then feature_note="F2"; fi
         else
-            result_str="${RED}FAIL (Accepted)${NC}"
+            color_start="${RED}"
+            color_end="${NC}"
+            result_text="FAIL (Accepted)"
+            echo ""
+            echo "--- LOG for $filename ($target_arch) ---"
+            cat "$output_file"
+            echo "--- END LOG ---"
         fi
     else
         # EXPECT PASS
         if [ $valid_failed -eq 0 ]; then
-             result_str="${GREEN}PASS (Accepted)${NC}"
-             feature_note="F3 (Verified)" 
+            color_start="${GREEN}"
+            color_end="${NC}"
+            result_text="PASS (Accepted)"
+            feature_note="F3 (Verified)" 
         else
-            result_str="${RED}FAIL (Rejected)${NC}"
+            color_start="${RED}"
+            color_end="${NC}"
+            result_text="FAIL (Rejected)"
         fi
     fi
-
-    printf "| %-55s | %-8s | %-25s | %-15s |\n" "${filename:0:55}" "$target_arch" "$result_str" "$feature_note"
+    
+    # Use %b for colors so they don't interfere with column width calculation and are interpreted correctly
+    printf "| %-55s | %-8s | %b%-25s%b | %-15s |\n" "${filename:0:55}" "$target_arch" "$color_start" "$result_text" "$color_end" "$feature_note"
 }
 
 # ------------------------------------------------------------------
@@ -158,8 +179,17 @@ try:
         
         # Tag parsing
         parts = filename[:-4].split('-')
-        if len(parts) < 5: tag = 'py3-none-any'
-        else: tag = '-'.join(parts[-3:])
+        if len(parts) < 5: 
+            tag = 'py3-none-any'
+            py_ver = '3.12'
+        else: 
+            tag = '-'.join(parts[-3:])
+            py_tag = parts[-3]
+            py_ver = '3.12'
+            if py_tag.startswith('cp') and py_tag[2:].isdigit():
+                 ver_str = py_tag[2:]
+                 if len(ver_str) == 2: py_ver = f'{ver_str[0]}.{ver_str[1]}' # 39 -> 3.9
+                 elif len(ver_str) >= 3: py_ver = f'{ver_str[0]}.{ver_str[1:]}' # 313 -> 3.13
         
         is_linux = 'manylinux' in filename or 'musllinux' in filename or 'linux' in filename
         is_x86 = 'x86_64' in filename or 'amd64' in filename
@@ -167,17 +197,17 @@ try:
         
         # Test Case 1: Target x86_64
         expect_x86 = 'PASS' if (is_linux and is_x86) else 'FAIL'
-        print(f'{filename}|x86_64|{expect_x86}|{tag}|Standard validity check')
+        print(f'{filename}|x86_64|{expect_x86}|{tag}|Standard validity check|{py_ver}')
 
         # Test Case 2: Target arm64
         expect_arm = 'PASS' if (is_linux and is_arm) else 'FAIL'
-        print(f'{filename}|arm64|{expect_arm}|{tag}|Standard validity check')
+        print(f'{filename}|arm64|{expect_arm}|{tag}|Standard validity check|{py_ver}')
 
 except Exception as e:
     sys.exit(1)
-" | while IFS='|' read -r filename target expected tag desc; do
+" | while IFS='|' read -r filename target expected tag desc py_ver; do
     if [ -z "$filename" ]; then continue; fi
-    run_test_case "$filename" "$target" "$expected" "$tag" "$desc"
+    run_test_case "$filename" "$target" "$expected" "$tag" "$desc" "$py_ver"
 done
 
 echo ""
@@ -188,7 +218,7 @@ MAC_TAG="cp313-cp313-macosx_10_13_x86_64"
 
 printf "| %-55s | %-8s | %-25s | %-15s |\n" "Renamed 'checks' (Mac->Linux Name)" "x86_64" "..." "F5"
 create_dummy_wheel "$FAKE_LINUX_NAME" "$MAC_TAG"
-run_test_case "$FAKE_LINUX_NAME" "x86_64" "FAIL" "$MAC_TAG" "Renamed Metadata Check"
+run_test_case "$FAKE_LINUX_NAME" "x86_64" "FAIL" "$MAC_TAG" "Renamed Metadata Check" "3.13"
 
 echo ""
 echo "=== Feature 3: Tool Detect Architecture ==="
@@ -198,7 +228,7 @@ TAG="cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64"
 create_dummy_wheel "$VALID_WHEEL" "$TAG"
 OUT_LOG="$TEST_DIR/detect_test.log"
 set +e
-bash "$CLI_TOOL" -w "$WHEEL_DIR/$VALID_WHEEL" -a "x86_64" --python-version 3.12 > "$OUT_LOG" 2>&1
+bash "$CLI_TOOL" -w "$WHEEL_DIR/$VALID_WHEEL" -a "x86_64" --python-version 3.13 > "$OUT_LOG" 2>&1
 set -e
 
 if grep -q "Detected platforms:" "$OUT_LOG" || grep -q "Platform Tag:" "$OUT_LOG"; then

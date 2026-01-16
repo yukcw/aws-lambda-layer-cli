@@ -22,9 +22,20 @@ create_dummy_wheel() {
     # To pass "validation", we need consistent content.
     
     local tmp_wheel_dir="$dir/temp_$(echo "$name" | tr -cd 'a-zA-Z0-9')"
-    mkdir -p "$tmp_wheel_dir/pkg.dist-info"
-    echo "Wheel-Version: 1.0" > "$tmp_wheel_dir/pkg.dist-info/WHEEL"
-    echo "Tag: $tag" >> "$tmp_wheel_dir/pkg.dist-info/WHEEL"
+    mkdir -p "$tmp_wheel_dir/pkg-1.0.dist-info"
+    # Create WHEEL file
+    echo "Wheel-Version: 1.0" > "$tmp_wheel_dir/pkg-1.0.dist-info/WHEEL"
+    echo "Generator: test" >> "$tmp_wheel_dir/pkg-1.0.dist-info/WHEEL"
+    echo "Root-Is-Purelib: true" >> "$tmp_wheel_dir/pkg-1.0.dist-info/WHEEL"
+    echo "Tag: $tag" >> "$tmp_wheel_dir/pkg-1.0.dist-info/WHEEL"
+    
+    # Create METADATA file (Required by modern Pip)
+    echo "Metadata-Version: 2.1" > "$tmp_wheel_dir/pkg-1.0.dist-info/METADATA"
+    echo "Name: pkg" >> "$tmp_wheel_dir/pkg-1.0.dist-info/METADATA"
+    echo "Version: 1.0" >> "$tmp_wheel_dir/pkg-1.0.dist-info/METADATA"
+
+    # Create RECORD file
+    touch "$tmp_wheel_dir/pkg-1.0.dist-info/RECORD"
     
     cwd=$(pwd)
     cd "$tmp_wheel_dir"
@@ -60,7 +71,7 @@ set +e
 OUT=$("$CLI_TOOL" -w "$WHEEL_PATH" -n out.zip 2>&1)
 set -e
 
-if echo "$OUT" | grep -q "Auto-detected Python: 3.9"; then
+if echo "$OUT" | grep -q "Detected Python: 3.9"; then
     echo -e "${GREEN}PASS${NC}: Auto-detected Python 3.9"
 else
     echo -e "${RED}FAIL${NC}: Failed to detect."
@@ -69,9 +80,12 @@ fi
 
 echo "Test 3: Redundant but Correct Arg"
 set +e
-OUT=$("$CLI_TOOL" -w "$WHEEL_PATH" --python-version 3.9 2>&1)
+OUT=$("$CLI_TOOL" -w "$WHEEL_PATH" --python-version 3.9 --architecture x86_64 2>&1)
+RES=$?
+set -e
+
 # Checking valid usage doesn't crash on arg check
-if echo "$OUT" | grep -q "Auto-detected Python: 3.9"; then
+if [ $RES -eq 0 ]; then
     echo -e "${GREEN}PASS${NC}: Accepted matching argument."
 else
     echo -e "${RED}FAIL${NC}: Should have accepted matching argument."

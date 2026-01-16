@@ -13,7 +13,7 @@ NC='\033[0m'
 
 # Paths
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLI_TOOL="$REPO_ROOT/aws_lambda_layer_cli/assets/aws-lambda-layer-cli"
+CLI_TOOL="$REPO_ROOT/scripts/aws-lambda-layer-cli"
 TEST_ROOT="$REPO_ROOT/test"
 
 # Load .env if exists
