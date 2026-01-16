@@ -25,6 +25,7 @@ cp "$BASE_DIR/VERSION.txt" "$BUILD_DIR/"
 cp "$BASE_DIR/scripts/aws-lambda-layer-cli" "$ASSETS_DIR/"
 cp "$BASE_DIR/scripts/create_nodejs_layer.sh" "$ASSETS_DIR/"
 cp "$BASE_DIR/scripts/create_python_layer.sh" "$ASSETS_DIR/"
+cp "$BASE_DIR/scripts/create_wheel_layer.sh" "$ASSETS_DIR/"
 cp "$BASE_DIR/scripts/uninstall.sh" "$ASSETS_DIR/"
 
 # Copy completion files
@@ -40,6 +41,6 @@ cd "$BASE_DIR"
 python3 -m build
 
 echo "Cleaning up temporary package files..."
-# rm -rf "$BUILD_DIR" "$BASE_DIR/aws_lambda_layer_cli.egg-info" "$BASE_DIR/build"
+rm -rf "$BUILD_DIR" "$BASE_DIR/aws_lambda_layer_cli.egg-info" "$BASE_DIR/build"
 
 echo "Build complete! Artifacts are in dist/"

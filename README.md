@@ -46,12 +46,12 @@ aws-lambda-layer-cli <command> [options]
 |--------|-------------|
 | `--nodejs, -n <pkgs>` | Create Node.js layer (comma-separated packages) |
 | `--python, -p <pkgs>` | Create Python layer (comma-separated packages) |
+| `--wheel, -w <file>`  | Use with `--python` to create layer from `.whl` file |
 | `--name` | Custom layer name |
 | `--description` | Layer description (publish only) |
 | `--profile` | AWS CLI profile (publish only) |
 | `--region` | AWS region (publish only) |
 | `--architecture, -a` | Target architecture (`x86_64` or `arm64`) |
-| `--platform` | Target platform tag (Python only, e.g. `manylinux_2_28_aarch64`) |
 | `--node-version` | Node.js version (default: 24) |
 | `--python-version` | Python version (default: 3.14) |
 | `-v, --version` | Show version |
@@ -72,9 +72,20 @@ aws-lambda-layer-cli publish --nodejs lodash --profile prod --region us-east-1 -
 # Create local zip with specific python version and architecture
 aws-lambda-layer-cli zip --python numpy==1.26.0,pandas --python-version 3.12 --architecture arm64
 
-# Publish to AWS with explicit platform tag (e.g. Amazon Linux 2023 / manylinux_2_28)
-aws-lambda-layer-cli publish --python requests --name web-layer --platform manylinux_2_28_x86_64
+# Publish to AWS for ARM64 architecture
+aws-lambda-layer-cli publish --python requests --name web-layer --architecture arm64
 ```
+
+### Wheel File
+The tool auto-detects Python version and architecture from the wheel filename.
+```bash
+# Create local zip from wheel (preferred syntax)
+aws-lambda-layer-cli zip --python --wheel numpy-2.4.1-cp313-cp313-manylinux.whl
+
+# Publish directly from wheel
+aws-lambda-layer-cli publish --python --wheel pandas-2.1.0-cp311-...-x86_64.whl
+```
+> **Note**: For wheels, arguments like `--python-version` or `--architecture` are checked against the wheel metadata. If they conflict, the tool will error to prevent incompatibility.
 
 ## Shell Completion
 

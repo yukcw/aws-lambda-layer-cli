@@ -40,7 +40,7 @@ _aws-lambda-layer-cli() {
     
     python_opts=(
         '--python-version:version:'
-        '--no-uv'
+        '--platform:platform:'
     )
     
     _arguments -C \

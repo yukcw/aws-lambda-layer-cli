@@ -41,6 +41,12 @@ else
     PYTHON_SCRIPT="$INSTALL_DIR/create_python_layer.sh"
 fi
 
+if [ -f "$SCRIPT_DIR/create_wheel_layer.sh" ]; then
+    WHEEL_SCRIPT="$SCRIPT_DIR/create_wheel_layer.sh"
+else
+    WHEEL_SCRIPT="$INSTALL_DIR/create_wheel_layer.sh"
+fi
+
 BIN_DIR="/usr/local/bin"
 COMPLETION_DIR="/etc/bash_completion.d"
 
@@ -56,8 +62,10 @@ show_help() {
     printf "${BLUE}Usage:${NC}\n"
     printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
     printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--python${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer-cli ${GREEN}zip${NC} ${YELLOW}--python --wheel${NC} <wheel_file> [options]\n"
     printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--nodejs${NC} <packages> [options]\n"
     printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--python${NC} <packages> [options]\n"
+    printf "  aws-lambda-layer-cli ${GREEN}publish${NC} ${YELLOW}--python --wheel${NC} <wheel_file> [options]\n"
     printf "  aws-lambda-layer-cli ${GREEN}help${NC}\n"
     printf "  aws-lambda-layer-cli [options]\n\n"
     
@@ -72,8 +80,11 @@ show_help() {
     printf "  ${YELLOW}--nodejs, --node, -n${NC}    Create a Node.js Lambda layer\n"
     printf "  ${YELLOW}--python, --py, -p${NC}      Create a Python Lambda layer\n"
     printf "  ${YELLOW}--runtime=RUNTIME${NC}       Specify runtime (nodejs or python)\n"
+    printf "${BLUE}Source Options (Python only):${NC}\n"
+    printf "  ${YELLOW}--wheel, -w${NC}             Create layer from existing Wheel file\n"
     printf "${BLUE}Arguments:${NC}\n"
-    printf "  <packages>              Comma-separated list of packages with optional versions (required)\n"
+    printf "  <packages>              Comma-separated list of packages\n"
+    printf "  <wheel_file>            Path to a local .whl file (use with --python --wheel)\n"
 
     printf "${BLUE}Common Options:${NC}\n"
     printf "  ${YELLOW}--name${NC}                  Name for the output zip file / layer name\n"
@@ -85,8 +96,7 @@ show_help() {
     printf "  ${YELLOW}--version, -v${NC}           Show tool version information\n"
     printf "  ${YELLOW}--node-version${NC}          Node.js version (default: 24)\n"
     printf "  ${YELLOW}--python-version${NC}        Python version (default: 3.14)\n"
-    printf "  ${YELLOW}--architecture, -a${NC}      Target architecture (x86_64, arm64)\n"
-    printf "  ${YELLOW}--platform${NC}              Target platform tag (Python only)\n\n"
+    printf "  ${YELLOW}--architecture, -a${NC}      Target architecture (x86_64, arm64)\n\n"
     
     printf "${MAGENTA}${UNDERLINE}Package Version Examples:${NC}\n"
     printf "  Node.js:    express@^4.0.0, lodash@~4.17.0, axios@>=1.6.0\n"
@@ -249,25 +259,6 @@ get_aws_account_info() {
     esac
 }
 
-# Determine compatible runtimes for AWS
-get_compatible_runtimes() {
-    local runtime="$1"
-    local version="2.0.4"
-    
-    case "$runtime" in
-        nodejs)
-            echo "nodejs${version}.x"
-            ;;
-        python)
-            # AWS Lambda uses format like python3.14, not python3.14.x
-            echo "python${version}"
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
-}
-
 # Check dependencies
 check_dependencies() {
     local runtime="$1"
@@ -317,6 +308,7 @@ check_dependencies() {
 # Zip command handler - creates local zip files
 handle_zip() {
     local runtime=""
+    local is_wheel=false
     local packages=""
     
     # Parse runtime flag
@@ -328,6 +320,10 @@ handle_zip() {
         --python|--py|-p)
             runtime="python"
             shift
+            if [[ "${1:-}" == "--wheel" || "${1:-}" == "-w" || "${1:-}" == "--whl" ]]; then
+                 is_wheel=true
+                 shift 
+            fi
             ;;
         --runtime=*)
             runtime="${1#*=}"
@@ -396,7 +392,7 @@ handle_zip() {
     local current_dir=$(pwd)
     cd "$output_dir"
     
-    # Pass arguments to the appropriate script with -i
+    # Pass arguments to the appropriate script
     if [ "$runtime" = "nodejs" ]; then
         if [ ! -f "$NODE_SCRIPT" ]; then
             cd "$current_dir"
@@ -410,23 +406,37 @@ handle_zip() {
         cd "$current_dir"
         exit $exit_code
     elif [ "$runtime" = "python" ]; then
-        if [ ! -f "$PYTHON_SCRIPT" ]; then
+        if [ "$is_wheel" = true ]; then
+             if [ ! -f "$WHEEL_SCRIPT" ]; then
+                cd "$current_dir"
+                printf "${RED}Error: Wheel script not found at $WHEEL_SCRIPT${NC}\n"
+                exit 1
+            fi
+            printf "${BLUE}Creating Lambda layer from Wheel...${NC}\n"
+            bash "$WHEEL_SCRIPT" -w "$packages" "$@"
+            local exit_code=$?
             cd "$current_dir"
-            printf "${RED}Error: Python script not found at $PYTHON_SCRIPT${NC}\n"
-            printf "Please run scripts/install.sh first\n"
-            exit 1
+            exit $exit_code
+        else
+            if [ ! -f "$PYTHON_SCRIPT" ]; then
+                cd "$current_dir"
+                printf "${RED}Error: Python script not found at $PYTHON_SCRIPT${NC}\n"
+                printf "Please run scripts/install.sh first\n"
+                exit 1
+            fi
+            printf "${BLUE}Creating Python Lambda layer (local zip)...${NC}\n"
+            bash "$PYTHON_SCRIPT" -i "$packages" "$@"
+            local exit_code=$?
+            cd "$current_dir"
+            exit $exit_code
         fi
-        printf "${BLUE}Creating Python Lambda layer (local zip)...${NC}\n"
-        bash "$PYTHON_SCRIPT" -i "$packages" "$@"
-        local exit_code=$?
-        cd "$current_dir"
-        exit $exit_code
     fi
 }
 
 # Publish command handler - publishes layer directly to AWS
 handle_publish() {
     local runtime=""
+    local is_wheel=false
     local description=""
     local layer_name=""
     local packages=""
@@ -512,6 +522,11 @@ handle_publish() {
         --python|--py|-p)
             runtime="python"
             shift
+            # Check if the next argument is --wheel
+            if [[ "${1:-}" == "--wheel" || "${1:-}" == "-w" || "${1:-}" == "--whl" ]]; then
+                 is_wheel=true
+                 shift 
+            fi
             ;;
         --runtime=*)
             runtime="${1#*=}"
@@ -544,14 +559,14 @@ handle_publish() {
                 esac
             else
                 printf "${RED}Error: --runtime requires an argument${NC}\n"
-                printf "Example: --runtime=nodejs or --runtime python\n"
+                printf "Example: --runtime=nodejs, --runtime python\n"
                 exit 1
             fi
             ;;
         *)
             printf "${RED}Error: Missing or invalid runtime specification${NC}\n"
-            printf "Use --nodejs, --node, -n for Node.js or --python, --py, -p for Python\n"
-            printf "Or use --runtime=nodejs or --runtime=python\n"
+            printf "Use --nodejs (-n) or --python (-p)\n"
+            printf "Or use --runtime=nodejs, --runtime=python\n"
             exit 1
             ;;
     esac
@@ -561,7 +576,7 @@ handle_publish() {
         packages="$1"
         shift
     else
-        printf "${RED}Error: Missing packages argument${NC}\n"
+        printf "${RED}Error: Missing argument (packages or wheel file)${NC}\n"
         printf "Usage: aws-lambda-layer publish --nodejs <packages> [options]\n"
         printf "Example: aws-lambda-layer publish --nodejs express,axios --description \"My layer\"\n"
         exit 1
@@ -591,7 +606,13 @@ handle_publish() {
     printf "${BLUE}Building Lambda layer in output directory...${NC}\n"
     
     # Build the layer using the appropriate script
-    local build_args=("-i" "$packages")
+    local build_args=()
+    if [ "$is_wheel" = true ]; then
+        build_args+=("-w" "$packages")
+    else
+        build_args+=("-i" "$packages")
+    fi
+    
     if [ -n "$layer_name" ]; then
         build_args+=("--name" "${layer_name}.zip")
     fi
@@ -635,37 +656,75 @@ handle_publish() {
         local compatible_runtimes="nodejs${node_version}.x"
         
     elif [ "$runtime" = "python" ]; then
-        if [ ! -f "$PYTHON_SCRIPT" ]; then
-            cd "$current_dir"
-            printf "${RED}Error: Python script not found${NC}\n"
-            exit 1
-        fi
-        bash "$PYTHON_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
-        
-        # Check if build script succeeded
-        if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            cd "$current_dir"
-            printf "${RED}Error: Python layer build failed${NC}\n"
-            printf "Check build log: $output_dir/build.log\n"
-            exit 1
-        fi
-        
-        # Extract zip file name from build output (just the filename, not full path)
-        zip_file=$(grep -o "File: .*\.zip" "build.log" | cut -d' ' -f2 | tail -1)
-        if [ -n "$zip_file" ]; then
-            zip_file=$(basename "$zip_file")
+        if [ "$is_wheel" = true ]; then
+            if [ ! -f "$WHEEL_SCRIPT" ]; then
+                cd "$current_dir"
+                printf "${RED}Error: Wheel script not found${NC}\n"
+                exit 1
+            fi
+            bash "$WHEEL_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
+            
+            if [ ${PIPESTATUS[0]} -ne 0 ]; then
+                cd "$current_dir"
+                printf "${RED}Error: Wheel layer build failed${NC}\n"
+                printf "Check build log: $output_dir/build.log\n"
+                exit 1
+            fi
+            
+            zip_file=$(grep -o "File: .*\.zip" "build.log" | cut -d' ' -f2 | tail -1)
+            if [ -n "$zip_file" ]; then
+                zip_file=$(basename "$zip_file")
+            else
+                zip_file=$(find . -maxdepth 1 -name "*.zip" -type f | head -1 | sed 's|^\./||')
+            fi
+            
+            local python_version=$(grep "Detected Python: " "build.log" | awk -F': ' '{print $2}' | tail -1)
+            if [ -z "$python_version" ]; then python_version="3.12"; fi
+            compatible_runtimes="python${python_version}"
+            
+            local detected_arch=$(grep "Detected Architecture: " "build.log" | awk -F': ' '{print $2}' | tail -1)
+            if [ -n "$detected_arch" ]; then
+                if [ "$detected_arch" = "aarch64" ]; then compatible_architectures="arm64";
+                elif [ "$detected_arch" = "x86_64" ]; then compatible_architectures="x86_64";
+                fi
+            fi
+            
+            if [ -n "${compatible_architectures:-}" ]; then
+                printf "${CYAN}Info: Using detected architecture: $compatible_architectures${NC}\n"
+            fi
         else
-            # Try to find zip file in current directory
-            zip_file=$(find . -maxdepth 1 -name "*.zip" -type f | head -1 | sed 's|^\./||')
+            if [ ! -f "$PYTHON_SCRIPT" ]; then
+                cd "$current_dir"
+                printf "${RED}Error: Python script not found${NC}\n"
+                exit 1
+            fi
+            bash "$PYTHON_SCRIPT" "${build_args[@]}" 2>&1 | tee build.log
+            
+            # Check if build script succeeded
+            if [ ${PIPESTATUS[0]} -ne 0 ]; then
+                cd "$current_dir"
+                printf "${RED}Error: Python layer build failed${NC}\n"
+                printf "Check build log: $output_dir/build.log\n"
+                exit 1
+            fi
+            
+            # Extract zip file name from build output (just the filename, not full path)
+            zip_file=$(grep -o "File: .*\.zip" "build.log" | cut -d' ' -f2 | tail -1)
+            if [ -n "$zip_file" ]; then
+                zip_file=$(basename "$zip_file")
+            else
+                # Try to find zip file in current directory
+                zip_file=$(find . -maxdepth 1 -name "*.zip" -type f | head -1 | sed 's|^\./||')
+            fi
+            
+            # Extract Python version for compatible runtimes
+            # Pattern matches "Python version: X.Y" or "Python Version: X.Y"
+            local python_version=$(grep -i "Python.*version: [0-9.]*" "build.log" | awk '{print $NF}' | tail -1)
+            if [ -z "$python_version" ]; then
+                python_version="3.14"
+            fi
+            local compatible_runtimes="python${python_version}"
         fi
-        
-        # Extract Python version for compatible runtimes
-        # Pattern matches "Python version: X.Y" or "Python Version: X.Y"
-        local python_version=$(grep -i "Python.*version: [0-9.]*" "build.log" | awk '{print $NF}' | tail -1)
-        if [ -z "$python_version" ]; then
-            python_version="3.14"
-        fi
-        local compatible_runtimes="python${python_version}"
     fi
     
     # Check if zip file was created
@@ -681,7 +740,11 @@ handle_publish() {
     if [ "$runtime" = "nodejs" ]; then
         packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
     elif [ "$runtime" = "python" ]; then
-        packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
+        if [ "$is_wheel" = true ]; then
+             packages_info=$(basename "$packages")
+        else
+             packages_info=$(grep -o "Installed packages: .*" "build.log" | cut -d' ' -f3- | tail -1)
+        fi
     fi
     
     # Determine layer name - use just the first package name if not specified
@@ -694,7 +757,11 @@ handle_publish() {
             layer_name=$(echo "$first_package" | sed 's/@[0-9^~<>=].*$//' | sed 's/^@//' | tr '/' '-')
         else
             # For Python: remove ==version, >=version, etc.
-            layer_name=$(echo "$first_package" | sed 's/[=<>~!].*$//')
+            if [ "$is_wheel" = true ]; then
+                 layer_name=$(basename "$first_package" | cut -d'-' -f1)
+            else
+                 layer_name=$(echo "$first_package" | sed 's/[=<>~!].*$//')
+            fi
         fi
     fi
     
@@ -750,16 +817,32 @@ handle_publish() {
     printf "  --layer-name \"$layer_name\"\n"
     printf "  --description \"$final_description\"\n"
     printf "  --zip-file \"fileb://$(convert_path "$current_dir/$output_dir/$zip_file")\"\n"
-    printf "  --compatible-runtimes \"$compatible_runtimes\"\n\n"
+    printf "  --compatible-runtimes \"$compatible_runtimes\"\n"
+    if [ -n "${compatible_architectures:-}" ]; then
+        printf "  --compatible-architectures \"$compatible_architectures\"\n"
+    fi
+    printf "\n"
     
+    # Build AWS CLI command array
+    local publish_cmd=(aws)
+    if [ ${#publish_aws_opts[@]} -gt 0 ]; then
+        publish_cmd+=("${publish_aws_opts[@]}")
+    fi
+    publish_cmd+=(lambda publish-layer-version)
+    publish_cmd+=(--layer-name "$layer_name")
+    publish_cmd+=(--description "$final_description")
+    publish_cmd+=(--zip-file "fileb://$(convert_path "$current_dir/$output_dir/$zip_file")")
+    publish_cmd+=(--compatible-runtimes "$compatible_runtimes")
+    
+    if [ -n "${compatible_architectures:-}" ]; then
+        publish_cmd+=(--compatible-architectures "$compatible_architectures")
+    fi
+    
+    publish_cmd+=(--query '[LayerVersionArn, Version, Description]')
+    publish_cmd+=(--output table)
+
     # Run AWS CLI command and capture output and exit code
-    aws ${publish_aws_opts[@]+"${publish_aws_opts[@]}"} lambda publish-layer-version \
-        --layer-name "$layer_name" \
-        --description "$final_description" \
-        --zip-file "fileb://$(convert_path "$current_dir/$output_dir/$zip_file")" \
-        --compatible-runtimes "$compatible_runtimes" \
-        --query '[LayerVersionArn, Version, Description]' \
-        --output table 2>&1 | tee publish.log
+    "${publish_cmd[@]}" 2>&1 | tee publish.log
     
     local aws_exit_code=${PIPESTATUS[0]}
     

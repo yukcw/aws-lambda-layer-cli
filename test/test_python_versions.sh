@@ -33,9 +33,9 @@ test_python_al2() {
     local func_name="test-py310-$RUN_ID"
     
     cd "$TEST_DIR"
-    # requests is pure python but valid verification
-    echo "Publishing layer (Requests on 3.10)..."
-    output=$(yes | "$CLI_TOOL" publish --python "requests" --name "$layer_name" --python-version 3.10 | strip_ansi)
+    # Use numpy as it relies on C-extensions and stricter platform checks than pure python
+    echo "Publishing layer (NumPy on 3.10)..."
+    output=$(yes | "$CLI_TOOL" publish --python "numpy==1.26.4" --name "$layer_name" --python-version 3.10 | strip_ansi)
     
     layer_arn=$(echo "$output" | grep "Layer ARN:" | awk '{print $3}' | tr -d '\r')
     if [ -z "$layer_arn" ]; then 
@@ -57,12 +57,12 @@ test_python_al2() {
     echo "Creating Lambda (Python 3.10)..."
     cat > lambda_function.py <<EOF
 import json
-import requests
+import numpy
 def lambda_handler(event, context):
     return {
         'statusCode': 200,
         'body': json.dumps({
-            'requests_version': requests.__version__
+            'numpy_version': numpy.__version__
         })
     }
 EOF
@@ -80,8 +80,8 @@ EOF
 
     sleep 5
     aws lambda invoke --function-name "$func_name" response.json > /dev/null
-    if grep -q "requests_version" response.json; then
-        echo -e "${GREEN}PASS:${NC} Python 3.10 Invocation success."
+    if grep -q "numpy_version" response.json; then
+        echo -e "${GREEN}PASS:${NC} Python 3.10 Invocation success (NumPy)."
     else
         echo -e "${RED}FAIL:${NC} Python 3.10 Invocation failed."
         cat response.json
@@ -122,21 +122,20 @@ test_python_al2023() {
     # Create verify function
     cat <<EOF > lambda_function.py
 import json
-import requests
-import sys
+import numpy
 def lambda_handler(event, context):
     return {
         'statusCode': 200, 
         'body': json.dumps({
             'message': 'ok',
-            'requests_version': requests.__version__
+            'numpy_version': numpy.__version__
         })
     }
 EOF
     zip -q function.zip lambda_function.py
 
-    echo "Publishing layer (Requests on 3.12)..."
-    output=$(yes | "$CLI_TOOL" publish --python "requests" --name "$layer_name" --python-version 3.12 | strip_ansi)
+    echo "Publishing layer (NumPy on 3.12)..."
+    output=$(yes | "$CLI_TOOL" publish --python "numpy==1.26.4" --name "$layer_name" --python-version 3.12 | strip_ansi)
     
     layer_arn=$(echo "$output" | grep "Layer ARN:" | awk '{print $3}' | tr -d '\r')
     if [ -z "$layer_arn" ]; then exit 1; fi
@@ -168,8 +167,8 @@ EOF
 
     sleep 5
     aws lambda invoke --function-name "$func_name" response_312.json > /dev/null
-    if grep -q "requests_version" response_312.json; then
-         echo -e "${GREEN}PASS:${NC} Python 3.12 Invocation success."
+    if grep -q "numpy_version" response_312.json; then
+         echo -e "${GREEN}PASS:${NC} Python 3.12 Invocation success (NumPy)."
     else
          echo -e "${RED}FAIL:${NC} Python 3.12 Invocation failed."
          cat response_312.json

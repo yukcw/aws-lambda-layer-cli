@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Python Lambda Layer Creator with UV and version specification
+# Python Lambda Layer Creator with version specification
 # Usage:
 #   ./create_python_layer.sh -i numpy==1.26.0,pandas==2.1.3
 #   ./create_python_layer.sh -i numpy==1.26.0,pandas,boto3==1.34.0 -n my-layer.zip
-#   ./create_python_layer.sh --packages=requests==2.31.0,boto3 --no-uv
+#   ./create_python_layer.sh --packages=requests==2.31.0,boto3
 
 set -e  # Exit on error
 set -u  # Treat unset variables as errors
@@ -140,20 +140,6 @@ while [[ $# -gt 0 ]]; do
             validate_python_version "$PYTHON_VERSION"
             shift
             ;;
-        --platform)
-            if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
-                PLATFORM="$2"
-                shift 2
-            else
-                printf "${RED}Error: $1 requires an argument${NC}\n"
-                printf "Example: $1 manylinux_2_28_x86_64\n"
-                exit 1
-            fi
-            ;;
-        --platform=*)
-            PLATFORM="${1#*=}"
-            shift
-            ;;
         -a|--architecture)
             if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                 ARCHITECTURE="$2"
@@ -180,17 +166,8 @@ Options:
   -i, --packages        Comma-separated list of Python packages (with optional versions)
   -n, --name            Name of the output zip file
   --python-version      Python version (default: 3.14)
-  --platform            Target platform tag (optional, overrides architecture)
   -a, --architecture    Target architecture (x86_64 or arm64, default: x86_64)
   -h, --help            Show this help message
-
-Supported Platforms (optional):
-  manylinux2014_x86_64    # Amazon Linux 2, RHEL 7+ (older)
-  manylinux2014_aarch64   # ARM64 architecture
-  manylinux_2_28_x86_64   # Amazon Linux 2023, RHEL 8+ (newer)
-  manylinux_2_28_aarch64  # ARM64 with newer glibc
-  linux_x86_64            # Generic Linux
-  linux_aarch64           # Generic ARM64 Linux
 
 Version Specification:
   Package versions can be specified using standard Python version specifiers:
@@ -393,9 +370,13 @@ if [ ${#INSTALL_OPTS[@]} -gt 0 ]; then
     # We use the site-packages directory of the current venv
     SITE_PACKAGES=$(python -c "import site; print(site.getsitepackages()[0])")
     printf "  Targeting site-packages: $SITE_PACKAGES\n"
-    pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}" --target "$SITE_PACKAGES"
+    CMD=(pip install "${PKG_ARRAY[@]}" "${INSTALL_OPTS[@]}" --target "$SITE_PACKAGES")
+    echo "  Running: ${CMD[*]}"
+    "${CMD[@]}"
 else
-    pip install "${PKG_ARRAY[@]}"
+    CMD=(pip install "${PKG_ARRAY[@]}")
+    echo "  Running: ${CMD[*]}"
+    "${CMD[@]}"
 fi
 
 # Count packages from command argument

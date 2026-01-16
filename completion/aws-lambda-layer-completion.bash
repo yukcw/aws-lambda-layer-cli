@@ -13,7 +13,7 @@ _aws_lambda_layer_cli() {
     local common_opts="--name -h --help"
     local publish_opts="--description --layer-name --profile --region"
     local node_opts="--node-version"
-    local python_opts="--python-version --no-uv"
+    local python_opts="--python-version --platform"
 
     case ${cword} in
         1)
